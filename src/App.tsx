@@ -1,7 +1,7 @@
 import { useState, type CSSProperties } from 'react';
 import { BottomTabBar } from './components/BottomTabBar';
 import { PlaceholderTab } from './components/PlaceholderTab';
-import { TravelSearchScreen } from './components/TravelSearchScreen';
+import { SearchFlow } from './components/SearchFlow';
 import { useSafeAreaInsets } from './hooks/useSafeAreaInsets';
 import type { AppTabId } from './types/travelSearch';
 import './App.css';
@@ -23,7 +23,7 @@ export default function App() {
       }
     >
       <main className="app-main" id="main-content">
-        {activeTab === 'search' ? <TravelSearchScreen /> : null}
+        {activeTab === 'search' ? <SearchFlow /> : null}
         {activeTab === 'saved' ? (
           <PlaceholderTab
             title="저장한 여행"

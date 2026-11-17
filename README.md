@@ -4,7 +4,7 @@ Apps in Toss WebView 미니앱 — React + TypeScript + Vite.
 
 공식 스캐폴더 [`create-ait-app`](https://github.com/toss/create-ait-app)의 `react-ts` 템플릿으로 생성했습니다.
 
-현재 stage 2: 여행 조건(예산·인원·출발 공항·기간·선택 일정) 입력 화면 + 하단 탭 셸.
+현재 stage 3: 여행 조건 입력 → MOCK 추천 목록/상세(예산 적합·초과·가격 확인 필요). 실시간 항공·숙소 API 아님.
 
 ## 요구 사항
 
