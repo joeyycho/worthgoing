@@ -53,7 +53,8 @@ export interface DestinationRecommendation {
   remainingKrw: number | null;
   remainingPercent: number | null;
   status: BudgetFitStatus;
-  isMock: true;
+  /** True when flight and/or lodging quotes include mock data */
+  isMock: boolean;
 }
 
 export interface RecommendRequest {

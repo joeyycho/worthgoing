@@ -6,7 +6,7 @@ import type { ServerEnv } from './env.js';
  * Never import this module from the Vite frontend.
  */
 export function createServiceClient(env: ServerEnv): SupabaseClient {
-  if (!env.configured || !env.supabaseUrl || !env.serviceRoleKey) {
+  if (!env.supabaseConfigured || !env.supabaseUrl || !env.serviceRoleKey) {
     throw new Error('Supabase is not configured on the server');
   }
 

@@ -4,7 +4,7 @@ Apps in Toss WebView 미니앱 — React + TypeScript + Vite.
 
 공식 스캐폴더 [`create-ait-app`](https://github.com/toss/create-ait-app)의 `react-ts` 템플릿으로 생성했습니다.
 
-현재 stage 5: Supabase 스키마/RLS + 서버 API 어댑터. 프론트에는 service role 없음. env 미설정 시 stage 4 Storage 폴백.
+현재 stage 6: FlightProvider + 서버 Amadeus(키 있으면) / Mock 폴백. Amadeus 비밀키는 `server/.env`만.
 
 ## 요구 사항
 
@@ -23,6 +23,8 @@ npm run dev
 브라우저에서 개발 서버를 확인합니다. 오른쪽 아래 `AIT` 버튼으로 Apps in Toss 환경을 미리볼 수 있습니다.
 
 Supabase를 쓰려면 `server/.env`에 `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`를 넣고, 마이그레이션을 적용하세요. 자세한 방법은 `supabase/README.md`.
+
+Amadeus 항공 검색(stage 6): `server/.env`에 `AMADEUS_CLIENT_ID` / `AMADEUS_CLIENT_SECRET`을 넣으면 서버가 Amadeus Self-Service를 호출합니다. 키가 없거나 API 실패 시 MockFlightProvider + MOCK 배너로 폴백합니다. Vite/`VITE_*`에 Amadeus 비밀키를 넣지 마세요.
 
 ## 빌드 / 배포
 

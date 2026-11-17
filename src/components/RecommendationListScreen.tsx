@@ -45,6 +45,17 @@ export function RecommendationListScreen({
       </header>
 
       <MockBanner />
+      {items.some((item) => item.flight.isMock) ? (
+        <p className="mock-banner" role="note">
+          <strong>항공 MOCK</strong> · Amadeus 키가 없거나 API 실패 시 MockFlightProvider를 사용해요.
+          확정 구매가가 아닙니다.
+        </p>
+      ) : null}
+      {flexible ? (
+        <p className="status-note flexible-note" role="status">
+          유연 일정 모드 · 항공은 <strong>예상가(indicative)</strong>로 표시돼요.
+        </p>
+      ) : null}
 
       <div className="sort-row" role="group" aria-label="정렬">
         {SORT_OPTIONS.map((option) => (

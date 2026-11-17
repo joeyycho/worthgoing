@@ -34,6 +34,14 @@ export function DestinationCard({ item, onSelect }: DestinationCardProps) {
           <p className="destination-card-total">{formatKrw(estimatedTotalKrw)}원</p>
         )}
 
+        <p className="flight-mode-chip" data-mode={flight.priceMode}>
+          {flight.priceMode === 'live'
+            ? `항공 시세 · ${new Date(flight.searchedAt).toLocaleString('ko-KR')}`
+            : flight.priceMode === 'indicative'
+              ? '항공 예상가(유연 일정)'
+              : '항공 MOCK'}
+        </p>
+
         <dl className="destination-card-meta">
           <div>
             <dt>항공</dt>
