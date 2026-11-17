@@ -12,10 +12,10 @@ export interface TripSnapshot {
   /** Always true while stage 3 mock providers are in use */
   isMock: true;
   /**
-   * Until Supabase (stage 5), share payloads are client-only / MOCK durable storage.
-   * Portable share links may embed the snapshot in the URL query.
+   * `supabase` when persisted via the stage-5 server API.
+   * `client-local-mock` when using Apps in Toss Storage / localStorage fallback.
    */
-  storageKind: 'client-local-mock';
+  storageKind: 'client-local-mock' | 'supabase';
 }
 
 export interface SavedTrip {

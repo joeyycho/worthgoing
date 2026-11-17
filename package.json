@@ -8,7 +8,10 @@
     "build": "tsc -b && vite build && ait build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "deploy": "ait deploy"
+    "deploy": "ait deploy",
+    "server:dev": "npm run dev --prefix server",
+    "server:install": "npm install --prefix server",
+    "server:typecheck": "npm run typecheck --prefix server"
   },
   "dependencies": {
     "react": "^19.3.1",

@@ -1,6 +1,7 @@
 import type { DestinationRecommendation } from '../types/recommendation';
 import type { TravelSearchFormState } from '../types/travelSearch';
 import { TRIP_SNAPSHOT_VERSION, type TripSnapshot } from '../types/tripStore';
+import { isApiConfigured } from './api/tripApiClient';
 
 export const PRICE_AS_OF_DISCLAIMER =
   '표시된 가격은 저장·공유 시점의 MOCK 예시이며, 지금 시점의 실시간 시세와 다를 수 있어요.';
@@ -16,7 +17,7 @@ export function createTripSnapshot(
     form: structuredClone(form),
     recommendation: structuredClone(recommendation),
     isMock: true,
-    storageKind: 'client-local-mock',
+    storageKind: isApiConfigured() ? 'supabase' : 'client-local-mock',
   };
 }
 
