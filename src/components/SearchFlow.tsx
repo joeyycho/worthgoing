@@ -81,8 +81,10 @@ export function SearchFlow() {
 
   useNestedBackNavigation(view !== 'form', handleBack);
 
-  if (view === 'detail' && selected) {
-    return <DestinationDetailScreen item={selected} onBack={handleBack} />;
+  if (view === 'detail' && selected && form) {
+    return (
+      <DestinationDetailScreen mode="live" item={selected} form={form} onBack={handleBack} />
+    );
   }
 
   if (view === 'results' && form) {
