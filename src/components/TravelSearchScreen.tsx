@@ -15,10 +15,14 @@ import type { AirportCode, TravelSearchFormState } from '../types/travelSearch';
 
 type FieldErrorKey = 'tripLengthDays' | 'departureAirports' | 'dateRange';
 
-export function TravelSearchScreen() {
-  const [form, setForm] = useState<TravelSearchFormState>(INITIAL_TRAVEL_SEARCH);
+interface TravelSearchScreenProps {
+  initialForm?: TravelSearchFormState;
+  onSearch: (form: TravelSearchFormState) => void;
+}
+
+export function TravelSearchScreen({ initialForm, onSearch }: TravelSearchScreenProps) {
+  const [form, setForm] = useState<TravelSearchFormState>(initialForm ?? INITIAL_TRAVEL_SEARCH);
   const [errors, setErrors] = useState<Partial<Record<FieldErrorKey, string>>>({});
-  const [submitNote, setSubmitNote] = useState<string | null>(null);
 
   const totalBudget = form.budgetPerPerson * form.travelers;
   const isFlexibleDates = form.departureDate === '' && form.returnDate === '';
@@ -29,7 +33,6 @@ export function TravelSearchScreen() {
 
   function update<K extends keyof TravelSearchFormState>(key: K, value: TravelSearchFormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
-    setSubmitNote(null);
   }
 
   function toggleAirport(code: AirportCode) {
@@ -40,7 +43,6 @@ export function TravelSearchScreen() {
         : [...prev.departureAirports, code];
       return { ...prev, departureAirports: next };
     });
-    setSubmitNote(null);
   }
 
   function validate(): boolean {
@@ -69,16 +71,9 @@ export function TravelSearchScreen() {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!validate()) {
-      setSubmitNote(null);
       return;
     }
-
-    // Stage 2: capture conditions only — recommendations arrive in stage 3.
-    setSubmitNote(
-      isFlexibleDates
-        ? '조건을 확인했어요. 일정 미지정(유연 일정) 모드로, 다음 단계에서 참고용 여행지를 보여 줄 예정이에요.'
-        : '조건을 확인했어요. 다음 단계에서 이 조건으로 여행지를 찾아 줄 예정이에요.',
-    );
+    onSearch(form);
   }
 
   return (
@@ -256,10 +251,10 @@ export function TravelSearchScreen() {
         {isFlexibleDates ? (
           <p className="status-note flexible-note" role="status">
             날짜를 비워 두면 <strong>유연 일정(참고용)</strong> 모드로 찾아 드려요. 실제 항공권 날짜는
-            이후 단계에서 확인할 수 있어요.
+            별도 확인이 필요해요.
           </p>
         ) : (
-          <p className="helper-text">선택한 기간을 기준으로 조건을 맞춰 볼게요.</p>
+          <p className="helper-text">선택한 기간을 기준으로 목업 조건을 맞춰 볼게요.</p>
         )}
         {errors.dateRange ? (
           <p className="field-error" role="alert">
@@ -268,17 +263,11 @@ export function TravelSearchScreen() {
         ) : null}
       </section>
 
-      {submitNote ? (
-        <p className="submit-note" role="status">
-          {submitNote}
-        </p>
-      ) : null}
-
       <div className="cta-wrap">
         <button type="submit" className="primary-cta">
           조건으로 여행지 찾기
         </button>
-        <p className="helper-text cta-helper">추천 결과는 stage 3에서 연결됩니다.</p>
+        <p className="helper-text cta-helper">결과는 MOCK 예시이며 실시간 검색이 아닙니다.</p>
       </div>
     </form>
   );
