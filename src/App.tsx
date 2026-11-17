@@ -1,27 +1,41 @@
-import "./App.css";
+import { useState, type CSSProperties } from 'react';
+import { BottomTabBar } from './components/BottomTabBar';
+import { PlaceholderTab } from './components/PlaceholderTab';
+import { TravelSearchScreen } from './components/TravelSearchScreen';
+import { useSafeAreaInsets } from './hooks/useSafeAreaInsets';
+import type { AppTabId } from './types/travelSearch';
+import './App.css';
 
-function App() {
+export default function App() {
+  const [activeTab, setActiveTab] = useState<AppTabId>('search');
+  const insets = useSafeAreaInsets();
+
   return (
-    <main className="app" data-testid="apps-in-toss-starter">
-      <header className="app-header">
-        <h1 className="page-title">갈만해</h1>
-        <p className="page-subtitle">앱인토스 미니앱 스캐폴드 (stage 1)</p>
-      </header>
+    <div
+      className="app-shell"
+      style={
+        {
+          '--safe-top': `${insets.top}px`,
+          '--safe-right': `${insets.right}px`,
+          '--safe-bottom': `${insets.bottom}px`,
+          '--safe-left': `${insets.left}px`,
+        } as CSSProperties
+      }
+    >
+      <main className="app-main" id="main-content">
+        {activeTab === 'search' ? <TravelSearchScreen /> : null}
+        {activeTab === 'saved' ? (
+          <PlaceholderTab
+            title="저장한 여행"
+            description="마음에 드는 여행지를 모아 두는 공간이에요."
+          />
+        ) : null}
+        {activeTab === 'mypage' ? (
+          <PlaceholderTab title="마이페이지" description="계정과 설정은 이후 단계에서 준비돼요." />
+        ) : null}
+      </main>
 
-      <nav className="app-actions" aria-label="Apps in Toss 링크">
-        <a className="app-button app-button-primary" href="https://developers-apps-in-toss.toss.im" target="_blank" rel="noopener noreferrer">
-          개발자센터
-        </a>
-        <a className="app-button app-button-primary" href="https://techchat-apps-in-toss.toss.im" target="_blank" rel="noopener noreferrer">
-          개발자 커뮤니티
-        </a>
-      </nav>
-
-      <div className="app-logo-wrap">
-        <img className="logo" src={`${import.meta.env.BASE_URL}appsintoss-logo.png`} alt="Apps in Toss" />
-      </div>
-    </main>
+      <BottomTabBar activeTab={activeTab} onChange={setActiveTab} bottomInset={insets.bottom} />
+    </div>
   );
 }
-
-export default App;
