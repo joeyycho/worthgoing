@@ -1,75 +1,80 @@
 import type { SavedTrip, TripSnapshot } from '../types/tripStore';
-import { createId } from './tripSnapshot';
-import { kvGet, kvSet } from './kvStore';
+import {
+  apiListSavedTrips,
+  apiRemoveSavedTrip,
+  apiSaveTrip,
+  isApiConfigured,
+  apiHealth,
+} from './api/tripApiClient';
+import {
+  localGetSavedTrip,
+  localListSavedTrips,
+  localRemoveSavedTrip,
+  localSaveTrip,
+} from './localSavedTripsStore';
 
-const SAVED_TRIPS_KEY = 'galmanhae.savedTrips.v1';
-
-async function readAll(): Promise<SavedTrip[]> {
-  const raw = await kvGet(SAVED_TRIPS_KEY);
-  if (!raw) {
-    return [];
+async function isSupabaseBackendAvailable(): Promise<boolean> {
+  if (!isApiConfigured()) {
+    return false;
   }
-  try {
-    const parsed = JSON.parse(raw) as SavedTrip[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  const health = await apiHealth();
+  return Boolean(health?.ok && health.supabaseConfigured);
 }
 
-async function writeAll(trips: SavedTrip[]): Promise<void> {
-  await kvSet(SAVED_TRIPS_KEY, JSON.stringify(trips));
-}
-
+/**
+ * Adapter: Supabase-backed API when configured, otherwise stage-4 client Storage fallback.
+ */
 export async function listSavedTrips(): Promise<SavedTrip[]> {
-  const trips = await readAll();
-  return trips.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  if (await isSupabaseBackendAvailable()) {
+    try {
+      return await apiListSavedTrips();
+    } catch (error) {
+      console.warn('saved trips API failed; falling back to local store', error);
+    }
+  }
+  return localListSavedTrips();
 }
 
 export async function getSavedTrip(id: string): Promise<SavedTrip | null> {
-  const trips = await readAll();
-  return trips.find((trip) => trip.id === id) ?? null;
+  if (await isSupabaseBackendAvailable()) {
+    try {
+      const trips = await apiListSavedTrips();
+      return trips.find((trip) => trip.id === id) ?? null;
+    } catch (error) {
+      console.warn('saved trip get API failed; falling back to local store', error);
+    }
+  }
+  return localGetSavedTrip(id);
 }
 
 export async function saveTrip(snapshot: TripSnapshot): Promise<SavedTrip> {
-  const trips = await readAll();
-  const existing = trips.find(
-    (trip) =>
-      trip.snapshot.recommendation.destination.id === snapshot.recommendation.destination.id &&
-      trip.snapshot.form.budgetPerPerson === snapshot.form.budgetPerPerson &&
-      trip.snapshot.form.travelers === snapshot.form.travelers &&
-      trip.snapshot.form.tripLengthDays === snapshot.form.tripLengthDays,
-  );
-
-  if (existing) {
-    const updated: SavedTrip = {
-      ...existing,
-      createdAt: new Date().toISOString(),
-      snapshot,
-    };
-    await writeAll(trips.map((trip) => (trip.id === existing.id ? updated : trip)));
-    return updated;
+  if (await isSupabaseBackendAvailable()) {
+    try {
+      return await apiSaveTrip(snapshot);
+    } catch (error) {
+      console.warn('saved trip save API failed; falling back to local store', error);
+    }
   }
-
-  const next: SavedTrip = {
-    id: createId('saved'),
-    createdAt: new Date().toISOString(),
-    snapshot,
-  };
-  await writeAll([next, ...trips]);
-  return next;
+  return localSaveTrip(snapshot);
 }
 
 export async function removeSavedTrip(id: string): Promise<void> {
-  const trips = await readAll();
-  await writeAll(trips.filter((trip) => trip.id !== id));
+  if (await isSupabaseBackendAvailable()) {
+    try {
+      await apiRemoveSavedTrip(id);
+      return;
+    } catch (error) {
+      console.warn('saved trip delete API failed; falling back to local store', error);
+    }
+  }
+  await localRemoveSavedTrip(id);
 }
 
 export async function isTripSaved(
   destinationId: string,
   form: TripSnapshot['form'],
 ): Promise<boolean> {
-  const trips = await readAll();
+  const trips = await listSavedTrips();
   return trips.some(
     (trip) =>
       trip.snapshot.recommendation.destination.id === destinationId &&

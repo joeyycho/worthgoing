@@ -78,7 +78,7 @@ export async function shareTripSnapshot(snapshot: TripSnapshot): Promise<ShareTr
       webShareUrl,
       sharedLink: webShareUrl,
       usedTossShareApi: false,
-      note: '토스 Share API를 쓸 수 없어 웹 공유 링크를 복사했어요. 링크에 MOCK 스냅샷이 포함됩니다. 클라이언트 저장소만으로는 다른 기기에서 id 조회가 안 됩니다(stage 5에서 서버화).',
+      note: '토스 Share API를 쓸 수 없어 웹 공유 링크를 복사했어요. 링크에 MOCK 스냅샷이 포함됩니다. Supabase API가 켜져 있으면 id로 서버 조회도 가능해요.',
     };
   }
 }

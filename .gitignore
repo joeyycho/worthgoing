@@ -24,3 +24,11 @@ dist-ssr
 *.sw?
 
 *.ait
+
+# Env / secrets (keep .env.example)
+.env
+.env.*
+!.env.example
+server/.env
+server/.env.*
+!server/.env.example

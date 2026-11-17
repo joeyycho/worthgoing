@@ -64,7 +64,8 @@ export function SavedTripsScreen() {
       </header>
 
       <p className="mock-banner" role="note">
-        <strong>클라이언트 저장</strong> · Apps in Toss Storage / localStorage. 서버 동기화는 stage 5.
+        <strong>저장소</strong> · Supabase API가 설정되면 서버에 저장하고, 아니면 Apps in Toss Storage /
+        localStorage로 폴백해요. 가격은 저장 시점 MOCK 기준입니다.
       </p>
 
       {loading ? (
