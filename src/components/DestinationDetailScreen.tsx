@@ -1,12 +1,23 @@
+import { useState } from 'react';
 import { BUDGET_STATUS_LABEL } from '../constants/recommendation';
 import { formatKrw } from '../constants/travelSearch';
+import { saveTrip } from '../services/savedTripsStore';
+import { shareTripSnapshot, type ShareTripResult } from '../services/shareTrip';
+import { createTripSnapshot } from '../services/tripSnapshot';
 import type { DestinationRecommendation } from '../types/recommendation';
+import type { TravelSearchFormState } from '../types/travelSearch';
 import { CostBreakdownChart } from './CostBreakdownChart';
 import { MockBanner } from './MockBanner';
+import { PriceAsOfNote } from './PriceAsOfNote';
+import { TripConditionsSummary } from './TripConditionsSummary';
 
 interface DestinationDetailScreenProps {
   item: DestinationRecommendation;
+  form: TravelSearchFormState;
   onBack: () => void;
+  mode?: 'live' | 'saved' | 'shared';
+  capturedAt?: string;
+  onDeleteSaved?: () => void;
 }
 
 function ListBlock({ title, items }: { title: string; items: string[] }) {
@@ -22,14 +33,57 @@ function ListBlock({ title, items }: { title: string; items: string[] }) {
   );
 }
 
-export function DestinationDetailScreen({ item, onBack }: DestinationDetailScreenProps) {
+export function DestinationDetailScreen({
+  item,
+  form,
+  onBack,
+  mode = 'live',
+  capturedAt,
+  onDeleteSaved,
+}: DestinationDetailScreenProps) {
   const { destination, flight, lodging, status, estimatedTotalKrw, remainingKrw, remainingPercent } =
     item;
+  const [saveNote, setSaveNote] = useState<string | null>(null);
+  const [shareNote, setShareNote] = useState<string | null>(null);
+  const [shareLink, setShareLink] = useState<string | null>(null);
+  const [busy, setBusy] = useState<'save' | 'share' | null>(null);
+
+  const backLabel = mode === 'live' ? '← 목록으로' : '← 돌아가기';
+
+  async function handleSave() {
+    setBusy('save');
+    setSaveNote(null);
+    try {
+      const snapshot = createTripSnapshot(form, item);
+      await saveTrip(snapshot);
+      setSaveNote('저장했어요. “저장한 여행” 탭에서 확인할 수 있어요.');
+    } catch (error) {
+      setSaveNote(error instanceof Error ? error.message : '저장에 실패했어요.');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleShare() {
+    setBusy('share');
+    setShareNote(null);
+    setShareLink(null);
+    try {
+      const snapshot = createTripSnapshot(form, item, capturedAt);
+      const result: ShareTripResult = await shareTripSnapshot(snapshot);
+      setShareLink(result.sharedLink);
+      setShareNote(result.note);
+    } catch (error) {
+      setShareNote(error instanceof Error ? error.message : '공유에 실패했어요.');
+    } finally {
+      setBusy(null);
+    }
+  }
 
   return (
     <article className="detail-screen">
       <button type="button" className="text-back" onClick={onBack}>
-        ← 목록으로
+        {backLabel}
       </button>
 
       <div className="detail-hero">
@@ -44,6 +98,9 @@ export function DestinationDetailScreen({ item, onBack }: DestinationDetailScree
       </div>
 
       <MockBanner />
+      <PriceAsOfNote capturedAt={capturedAt} />
+
+      {mode !== 'live' ? <TripConditionsSummary form={form} /> : null}
 
       <p className="page-subtitle">{destination.intro}</p>
 
@@ -63,6 +120,66 @@ export function DestinationDetailScreen({ item, onBack }: DestinationDetailScree
               : ` · ${formatKrw(Math.abs(remainingKrw))}원 초과 (${remainingPercent}%)`}
         </p>
       </section>
+
+      {mode === 'live' || mode === 'shared' ? (
+        <div className="detail-actions">
+          {mode === 'live' ? (
+            <button
+              type="button"
+              className="secondary-cta"
+              onClick={() => void handleSave()}
+              disabled={busy !== null}
+            >
+              {busy === 'save' ? '저장 중…' : '이 결과 저장'}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="primary-cta"
+            onClick={() => void handleShare()}
+            disabled={busy !== null}
+          >
+            {busy === 'share' ? '공유 준비 중…' : '결과 공유하기'}
+          </button>
+        </div>
+      ) : null}
+
+      {mode === 'saved' ? (
+        <div className="detail-actions">
+          <button
+            type="button"
+            className="primary-cta"
+            onClick={() => void handleShare()}
+            disabled={busy !== null}
+          >
+            {busy === 'share' ? '공유 준비 중…' : '저장된 결과 공유'}
+          </button>
+          {onDeleteSaved ? (
+            <button type="button" className="secondary-cta danger-cta" onClick={onDeleteSaved}>
+              저장 삭제
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {saveNote ? (
+        <p className="submit-note" role="status">
+          {saveNote}
+        </p>
+      ) : null}
+      {shareNote ? (
+        <p className="status-note" role="status">
+          {shareNote}
+        </p>
+      ) : null}
+      {shareLink ? (
+        <p className="share-link-box">
+          <span className="helper-text">공유 링크</span>
+          <a className="external-link" href={shareLink} target="_blank" rel="noopener noreferrer">
+            {shareLink}
+          </a>
+        </p>
+      ) : null}
 
       <section className="detail-block">
         <h2 className="section-title">항공 (MOCK)</h2>
