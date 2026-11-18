@@ -4,6 +4,7 @@ import type {
   AccommodationQuote,
   AccommodationQuoteQuery,
 } from '../types/providers';
+import { normalizeAccommodationQuote } from './normalizeQuote';
 
 interface ApiAccommodationResponse {
   quote: AccommodationQuote;
@@ -36,7 +37,7 @@ export class ApiAccommodationProvider implements AccommodationProvider {
     }
 
     const json = (await response.json()) as ApiAccommodationResponse;
-    return json.quote;
+    return normalizeAccommodationQuote(json.quote);
   }
 
   async searchBatch(
@@ -76,7 +77,7 @@ export class ApiAccommodationProvider implements AccommodationProvider {
     const map = new Map<string, AccommodationQuote>();
     for (const row of json.results) {
       if (row.destinationId) {
-        map.set(row.destinationId, row);
+        map.set(row.destinationId, normalizeAccommodationQuote(row));
       }
     }
     return map;

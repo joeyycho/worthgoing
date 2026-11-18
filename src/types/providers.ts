@@ -3,6 +3,11 @@ import type { AirportCode } from './travelSearch';
 export type FlightPriceMode = 'live' | 'indicative' | 'mock';
 export type AccommodationPriceMode = 'live' | 'indicative' | 'mock';
 
+/** Match server flight providers; adapters coerce unexpected values without crashing. */
+export type FlightQuoteProvider = 'serpapi' | 'duffel' | 'amadeus' | 'mock';
+/** Match server stay providers; adapters coerce unexpected values without crashing. */
+export type AccommodationQuoteProvider = 'serpapi' | 'amadeus' | 'mock';
+
 export interface FlightQuoteQuery {
   originAirports: AirportCode[];
   destinationAirport: string;
@@ -34,7 +39,7 @@ export interface FlightQuote {
   roundTrip: boolean;
   baggageNotes: string | null;
   stats: FlightOfferStats;
-  provider: 'amadeus' | 'mock';
+  provider: FlightQuoteProvider;
 }
 
 export interface FlightProvider {
@@ -81,7 +86,7 @@ export interface AccommodationQuote {
   rooms: number;
   travelers: number;
   stats: AccommodationOfferStats;
-  provider: 'amadeus' | 'mock';
+  provider: AccommodationQuoteProvider;
 }
 
 export interface AccommodationProvider {

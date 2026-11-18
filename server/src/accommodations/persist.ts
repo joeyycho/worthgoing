@@ -1,9 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { sanitizeKrwAmount } from '../flights/money.js';
 import type { AccommodationQuoteResult, AccommodationSearchRequest } from './types.js';
 
 /**
  * Best-effort persist into stage-5 accommodation_searches / accommodation_offers.
  * Never invents a successful write when Supabase is unavailable.
+ * `provider` is text — 'serpapi' | 'amadeus' | 'mock' fit without migration.
+ * Null stay totals are allowed; invalid amounts stored as null (never NaN).
  */
 export async function persistAccommodationSearch(
   supabase: SupabaseClient | null,
@@ -40,15 +43,15 @@ export async function persistAccommodationSearch(
     const { error: offerError } = await supabase.from('accommodation_offers').insert({
       search_id: search.id,
       property_name: quote.propertyName,
-      total_stay_krw: quote.totalStayKrw,
+      total_stay_krw: sanitizeKrwAmount(quote.totalStayKrw),
       summary: quote.summary,
-      booking_url: quote.bookingUrl,
+      booking_url: quote.bookingUrl || '',
       is_mock: quote.isMock,
       raw: {
         priceMode: quote.priceMode,
         searchedAt: quote.searchedAt,
         stats: quote.stats,
-        perPersonStayKrw: quote.perPersonStayKrw,
+        perPersonStayKrw: sanitizeKrwAmount(quote.perPersonStayKrw),
         rooms: quote.rooms,
         cityCode: quote.cityCode,
       },

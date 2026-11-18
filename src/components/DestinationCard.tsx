@@ -34,19 +34,31 @@ export function DestinationCard({ item, onSelect }: DestinationCardProps) {
           <p className="destination-card-total">{formatKrw(estimatedTotalKrw)}원</p>
         )}
 
-        <p className="flight-mode-chip" data-mode={flight.priceMode}>
-          {flight.priceMode === 'live'
-            ? `항공 시세 · ${new Date(flight.searchedAt).toLocaleString('ko-KR')}`
-            : flight.priceMode === 'indicative'
-              ? '항공 예상가(유연 일정)'
-              : '항공 MOCK'}
+        <p
+          className="flight-mode-chip"
+          data-mode={flight.isMock ? 'mock' : flight.totalFareKrw == null ? 'unknown' : flight.priceMode}
+        >
+          {flight.isMock
+            ? '항공 예시'
+            : flight.totalFareKrw == null
+              ? '항공 확인불가'
+              : flight.priceMode === 'indicative'
+                ? '항공 예상'
+                : `항공 실시간 · ${new Date(flight.searchedAt).toLocaleString('ko-KR')}`}
         </p>
-        <p className="flight-mode-chip" data-mode={lodging.priceMode}>
-          {lodging.priceMode === 'live'
-            ? `숙소 시세 · ${new Date(lodging.searchedAt).toLocaleString('ko-KR')}`
-            : lodging.priceMode === 'indicative'
-              ? '숙소 예상가(유연 일정)'
-              : '숙소 MOCK'}
+        <p
+          className="flight-mode-chip"
+          data-mode={
+            lodging.isMock ? 'mock' : lodging.totalStayKrw == null ? 'unknown' : lodging.priceMode
+          }
+        >
+          {lodging.isMock
+            ? '숙소 예시'
+            : lodging.totalStayKrw == null
+              ? '숙소 확인불가'
+              : lodging.priceMode === 'indicative'
+                ? '숙소 예상'
+                : `숙소 실시간 · ${new Date(lodging.searchedAt).toLocaleString('ko-KR')}`}
         </p>
 
         <dl className="destination-card-meta">

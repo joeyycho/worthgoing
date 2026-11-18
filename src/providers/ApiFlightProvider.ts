@@ -1,5 +1,6 @@
 import { isApiConfigured } from '../services/api/tripApiClient';
 import type { FlightProvider, FlightQuote, FlightQuoteQuery } from '../types/providers';
+import { normalizeFlightQuote } from './normalizeQuote';
 
 interface ApiFlightResponse {
   quote: FlightQuote;
@@ -32,7 +33,7 @@ export class ApiFlightProvider implements FlightProvider {
     }
 
     const json = (await response.json()) as ApiFlightResponse;
-    return json.quote;
+    return normalizeFlightQuote(json.quote);
   }
 
   async searchBatch(
@@ -66,7 +67,7 @@ export class ApiFlightProvider implements FlightProvider {
     const map = new Map<string, FlightQuote>();
     for (const row of json.results) {
       if (row.destinationId) {
-        map.set(row.destinationId, row);
+        map.set(row.destinationId, normalizeFlightQuote(row));
       }
     }
     return map;

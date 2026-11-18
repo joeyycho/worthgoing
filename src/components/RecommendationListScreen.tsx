@@ -47,19 +47,30 @@ export function RecommendationListScreen({
       <MockBanner />
       {items.some((item) => item.flight.isMock) ? (
         <p className="mock-banner" role="note">
-          <strong>항공 MOCK</strong> · Amadeus 키가 없거나 API 실패 시 MockFlightProvider를 사용해요.
-          확정 구매가가 아닙니다.
+          <strong>항공 예시</strong> · 실시간 항공 시세를 쓰지 못해 예시 요금이에요. 확정 구매가가
+          아닙니다.
         </p>
       ) : null}
       {items.some((item) => item.lodging.isMock) ? (
         <p className="mock-banner" role="note">
-          <strong>숙소 MOCK</strong> · Amadeus 키가 없거나 Hotel API 실패 시 MockAccommodationProvider를
-          사용해요. 확정 구매가가 아닙니다.
+          <strong>숙소 예시</strong> · 실시간 숙소 시세를 쓰지 못해 예시 요금이에요. 확정 구매가가
+          아닙니다.
+        </p>
+      ) : null}
+      {items.some((item) => !item.flight.isMock && item.flight.totalFareKrw == null) ? (
+        <p className="status-note" role="status">
+          <strong>항공 확인불가</strong> · 검색은 됐지만 확정 가능한 왕복 요금이 없어요. 빈 결과와
+          오류는 다릅니다.
+        </p>
+      ) : null}
+      {items.some((item) => !item.lodging.isMock && item.lodging.totalStayKrw == null) ? (
+        <p className="status-note" role="status">
+          <strong>숙소 확인불가</strong> · 검색은 됐지만 확정 가능한 숙박 총액이 없어요.
         </p>
       ) : null}
       {flexible ? (
         <p className="status-note flexible-note" role="status">
-          유연 일정 모드 · 항공·숙소는 <strong>예상가(indicative)</strong>로 표시돼요.
+          유연 일정 모드 · 항공·숙소는 <strong>예상</strong> 요금으로 표시돼요.
         </p>
       ) : null}
 
@@ -80,8 +91,8 @@ export function RecommendationListScreen({
 
       {loading ? (
         <div className="state-panel" role="status" aria-live="polite">
-          <p className="state-title">목업 추천을 준비하고 있어요</p>
-          <p className="helper-text">항공·숙소 예시 견적을 불러오는 중이에요.</p>
+          <p className="state-title">추천을 준비하고 있어요</p>
+          <p className="helper-text">항공·숙소 시세를 불러오는 중이에요.</p>
         </div>
       ) : null}
 
