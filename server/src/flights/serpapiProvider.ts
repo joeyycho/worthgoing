@@ -21,40 +21,49 @@ import type { FlightQuoteResult, FlightSearchRequest } from './types.js';
  * 2) Pick one outbound with departure_token (deterministic rule below)
  * 3) Second GET with departure_token → parse return options
  * 4) Preserve outbound↔inbound in summary only when step 3 succeeds
+ * 5) Fare: selected return option `price` only (same object as its booking_token)
  *
  * ---------------------------------------------------------------------------
- * PRICE SEMANTICS (Step 3 — party round-trip fare)
+ * PRICE SEMANTICS — verification vs observed unlock
  * ---------------------------------------------------------------------------
- * SerpApi documents option `price` as "ticket price in the selected currency"
- * but does **not** unambiguously prove:
- *   (a) first-response outbound `price` is full round-trip vs outbound-only
- *   (b) second-response return `price` is full RT for the pair vs return-leg only
- *   (c) whether we may add outbound+inbound prices
- *   (d) whether `price` is per-adult or party-total when adults=N
+ * SerpApi docs do **not** fully prove party vs per-adult or tax inclusion.
  *
- * Docs/fixtures available in-repo and on SerpApi pages are insufficient for
- * (a)–(d). Live adults=1 vs adults=2 comparison on the same route is still
- * required. Until that evidence is recorded:
- *   → `totalFareKrw` is **null by policy** (do not invent RT or party totals).
- *   → Do not mark Step 3 "complete with live prices".
+ * Live observation (docs/serpapi-adults-fare-verify.md, Gate C context):
+ *   ICN→KIX 2027-02-10..14; adults 1 vs 2 exact 2×; token return `price` = RT combo;
+ *   taxes 미확인; other O&D / traveler types unverified.
  *
- * `SERPAPI_PARTY_RT_FARE_VERIFIED` gates the party helper. Keep false until
- * live comparison is documented in docs/serpapi-step-3.md.
+ * `SERPAPI_PARTY_RT_FARE_VERIFIED` stays **false** — not a full-criteria claim.
+ * Limited product unlock uses `SERPAPI_OBSERVED_PARTY_RT_POLICY` instead:
+ *   `'token_return_party_total'` → passthrough of token-confirmed return `price`
+ *   with `adults=travelers` already applied by SerpApi (never sum legs, never × adults).
  */
 
-/** Flip only after live adults=1 vs 2 + RT price evidence is documented. */
+/**
+ * Full verification flag. Keep false until broader O&D / tax / docs acceptance.
+ * Do **not** flip true solely from one-route adults 1 vs 2 observation.
+ */
 export const SERPAPI_PARTY_RT_FARE_VERIFIED = false;
 
 /**
- * Verified party-price rule once live A/B is done.
+ * Limited observed-rule unlock (intentional, scoped — not “fully verified”).
+ * `'token_return_party_total'` — selected return option price is RT party passthrough.
+ * `null` — keep totalFareKrw null regardless of displayed prices.
+ */
+export type SerpapiObservedPartyRtPolicy = 'token_return_party_total' | null;
+
+export const SERPAPI_OBSERVED_PARTY_RT_POLICY: SerpapiObservedPartyRtPolicy =
+  'token_return_party_total';
+
+/**
+ * Full-verification party-price rule (only when SERPAPI_PARTY_RT_FARE_VERIFIED).
  * `'party_total'` — displayed price already covers all adults.
  * `'per_adult'` — multiply by adults.
- * `null` — unverified; helper must return null (current Step 3 policy).
+ * `null` — not fully verified (current state).
  */
 export type SerpapiPartyPriceRule = 'party_total' | 'per_adult' | null;
 
 export const SERPAPI_PARTY_PRICE_RULE: SerpapiPartyPriceRule = SERPAPI_PARTY_RT_FARE_VERIFIED
-  ? null // placeholder: set to 'party_total' | 'per_adult' when verified
+  ? 'party_total'
   : null;
 
 interface SerpapiAirportTime {
@@ -89,6 +98,10 @@ export interface SerpapiGoogleFlightsResponse extends SerpapiSearchResponse {
   price_insights?: { lowest_price?: number };
 }
 
+function isUsableDisplayedPrice(price: unknown): price is number {
+  return typeof price === 'number' && Number.isFinite(price) && price >= 0;
+}
+
 export function collectFlightOptions(
   response: SerpapiGoogleFlightsResponse,
 ): SerpapiFlightOption[] {
@@ -100,7 +113,7 @@ export function collectFlightOptions(
 /**
  * Deterministic outbound pick for departure_token confirm:
  * 1) Prefer options that have a non-empty departure_token
- * 2) Among those, prefer finite numeric price (ascending)
+ * 2) Among those, prefer finite non-negative price (ascending)
  * 3) Tie-break: lower total_duration, then earlier first-leg departure time, then first in list
  * If no token exists, return null (cannot confirm return).
  */
@@ -113,8 +126,8 @@ export function pickOutboundOption(
   if (withToken.length === 0) return null;
 
   const ranked = [...withToken].sort((a, b) => {
-    const priceA = Number.isFinite(a.price) ? (a.price as number) : Number.POSITIVE_INFINITY;
-    const priceB = Number.isFinite(b.price) ? (b.price as number) : Number.POSITIVE_INFINITY;
+    const priceA = isUsableDisplayedPrice(a.price) ? a.price : Number.POSITIVE_INFINITY;
+    const priceB = isUsableDisplayedPrice(b.price) ? b.price : Number.POSITIVE_INFINITY;
     if (priceA !== priceB) return priceA - priceB;
 
     const durA = Number.isFinite(a.total_duration)
@@ -136,17 +149,26 @@ export function pickOutboundOption(
 }
 
 /**
- * Pick the cheapest return option (finite price) for summary pairing.
- * Price is NOT used for totalFareKrw unless party RT semantics are verified.
+ * Pick the cheapest return option for pairing.
+ * Prefer a non-empty booking_token on ties so `price` stays bound to the same
+ * bookable option (never attach another flight's price).
+ * Outbound first-response price is never used as RT fare.
  */
 export function pickReturnOption(
   options: SerpapiFlightOption[],
 ): SerpapiFlightOption | null {
   if (options.length === 0) return null;
   const ranked = [...options].sort((a, b) => {
-    const priceA = Number.isFinite(a.price) ? (a.price as number) : Number.POSITIVE_INFINITY;
-    const priceB = Number.isFinite(b.price) ? (b.price as number) : Number.POSITIVE_INFINITY;
+    const priceA = isUsableDisplayedPrice(a.price) ? a.price : Number.POSITIVE_INFINITY;
+    const priceB = isUsableDisplayedPrice(b.price) ? b.price : Number.POSITIVE_INFINITY;
     if (priceA !== priceB) return priceA - priceB;
+
+    const bookA =
+      typeof a.booking_token === 'string' && a.booking_token.trim().length > 0 ? 0 : 1;
+    const bookB =
+      typeof b.booking_token === 'string' && b.booking_token.trim().length > 0 ? 0 : 1;
+    if (bookA !== bookB) return bookA - bookB;
+
     const durA = Number.isFinite(a.total_duration)
       ? (a.total_duration as number)
       : Number.POSITIVE_INFINITY;
@@ -159,14 +181,25 @@ export function pickReturnOption(
 }
 
 /**
+ * RT combo price from the **same** selected return option that carries
+ * `booking_token` (when present). Never outbound price; never sum legs.
+ */
+export function selectedReturnComboPrice(
+  returnOption: SerpapiFlightOption | null,
+): number | null {
+  if (!returnOption) return null;
+  return isUsableDisplayedPrice(returnOption.price) ? returnOption.price : null;
+}
+
+/**
  * Convert a SerpApi displayed `price` into party-total KRW.
  *
- * When `SERPAPI_PARTY_RT_FARE_VERIFIED` is false (current policy), always
- * returns null — do not multiply/divide by guesswork.
+ * Unlock paths (intentional, distinct):
+ * 1) Full verification: `SERPAPI_PARTY_RT_FARE_VERIFIED` + `SERPAPI_PARTY_PRICE_RULE`
+ * 2) Observed scoped unlock: `SERPAPI_OBSERVED_PARTY_RT_POLICY === 'token_return_party_total'`
+ *    → party_total passthrough only (never × adults)
  *
- * When verified:
- * - `party_total` → tryAmountToKrw(displayed)
- * - `per_adult` → tryAmountToKrw(displayed * adults)
+ * Always: sanitize via tryAmountToKrw (neg / NaN / Inf / non-KRW unsupported → null).
  */
 export function toPartyTotalFareKrw(options: {
   displayedPrice: number;
@@ -175,18 +208,32 @@ export function toPartyTotalFareKrw(options: {
   env: ServerEnv;
   verified?: boolean;
   rule?: SerpapiPartyPriceRule;
+  observedPolicy?: SerpapiObservedPartyRtPolicy;
 }): number | null {
-  const verified = options.verified ?? SERPAPI_PARTY_RT_FARE_VERIFIED;
-  const rule = options.rule ?? SERPAPI_PARTY_PRICE_RULE;
-  if (!verified || rule == null) {
+  const verified =
+    options.verified !== undefined ? options.verified : SERPAPI_PARTY_RT_FARE_VERIFIED;
+  const rule = options.rule !== undefined ? options.rule : SERPAPI_PARTY_PRICE_RULE;
+  const observed =
+    options.observedPolicy !== undefined
+      ? options.observedPolicy
+      : SERPAPI_OBSERVED_PARTY_RT_POLICY;
+
+  if (!isUsableDisplayedPrice(options.displayedPrice)) {
     return null;
   }
-  if (!Number.isFinite(options.displayedPrice)) {
+
+  let amount: number | null = null;
+
+  if (verified && rule != null) {
+    const adults = Math.min(9, Math.max(1, options.adults));
+    amount = rule === 'per_adult' ? options.displayedPrice * adults : options.displayedPrice;
+  } else if (observed === 'token_return_party_total') {
+    // Observed party_total passthrough for token-confirmed RT — do not × adults.
+    amount = options.displayedPrice;
+  } else {
     return null;
   }
-  const adults = Math.min(9, Math.max(1, options.adults));
-  const amount =
-    rule === 'per_adult' ? options.displayedPrice * adults : options.displayedPrice;
+
   const converted = tryAmountToKrw(amount, options.currency, options.env);
   return converted.amountKrw;
 }
@@ -290,7 +337,7 @@ function buildSummary(options: {
   outbound: SerpapiFlightOption | null;
   inbound: SerpapiFlightOption | null;
   returnConfirmed: boolean;
-  fareNullReason: string;
+  fareNote: string;
 }): string {
   const bits: string[] = [
     `${options.origin} → ${options.destination} 왕복`,
@@ -319,13 +366,13 @@ function buildSummary(options: {
     bits.push('오는편 미확인');
   }
 
-  bits.push(options.fareNullReason);
+  bits.push(options.fareNote);
   return bits.join(' · ');
 }
 
 /**
- * Resolve party RT KRW from a candidate displayed price under the verified rule.
- * Always null while SERPAPI_PARTY_RT_FARE_VERIFIED is false.
+ * Resolve party RT KRW from token-confirmed return combo price.
+ * Uses observed scoped unlock and/or full verification — never outbound-only price.
  */
 function resolveFareKrw(
   env: ServerEnv,
@@ -333,11 +380,11 @@ function resolveFareKrw(
   adults: number,
 ): { totalFareKrw: number | null; currency: string; reason: string } {
   const currency = env.serpapiCurrency || 'KRW';
-  if (displayedPrice == null || !Number.isFinite(displayedPrice)) {
+  if (displayedPrice == null || !isUsableDisplayedPrice(displayedPrice)) {
     return {
       totalFareKrw: null,
       currency,
-      reason: '표시가 없음 (KRW 미표시)',
+      reason: '왕복 콤보 표시가 없음 (확인불가)',
     };
   }
   const party = toPartyTotalFareKrw({
@@ -347,17 +394,20 @@ function resolveFareKrw(
     env,
   });
   if (party == null) {
+    const observedOff = SERPAPI_OBSERVED_PARTY_RT_POLICY == null && !SERPAPI_PARTY_RT_FARE_VERIFIED;
     return {
       totalFareKrw: null,
       currency,
-      reason:
-        '왕복·인원 요금 의미 미검증으로 KRW 미표시 (live adults=1 vs 2 비교 필요)',
+      reason: observedOff
+        ? '왕복·인원 요금 정책 미활성으로 KRW 미표시'
+        : '표시가 변환 실패 (비KRW·무효 금액)',
     };
   }
   return {
     totalFareKrw: party,
     currency: 'KRW',
-    reason: '검색 시점 시세',
+    reason:
+      '예상 왕복 항공료 · 검색 당시 표시 가격 (예약 단계 변동·세금 확인 · 관측 범위 한정)',
   };
 }
 
@@ -399,15 +449,10 @@ export async function searchSerpapiFlights(
     returnConfirmed = returnOptions.length > 0;
   }
 
-  // Candidate displayed price for future verified mapping only.
-  // Prefer return-leg option price when return confirmed (Google shows pair total there
-  // in typical UX) — but we still refuse to publish totalFareKrw until verified.
+  // ONLY the selected return option's price (= same object as its booking_token).
+  // Never first-response outbound price. Never outbound+return sum.
   const candidatePrice =
-    returnConfirmed && inbound && Number.isFinite(inbound.price)
-      ? (inbound.price as number)
-      : outbound && Number.isFinite(outbound.price)
-        ? (outbound.price as number)
-        : null;
+    returnConfirmed && inbound ? selectedReturnComboPrice(inbound) : null;
 
   const fare = resolveFareKrw(env, candidatePrice, travelers);
 
@@ -425,11 +470,10 @@ export async function searchSerpapiFlights(
     outbound: outbound ?? outboundOptions[0] ?? null,
     inbound,
     returnConfirmed,
-    fareNullReason: fare.reason,
+    fareNote: fare.reason,
   });
 
   return {
-    // Party RT fare remains null until SERPAPI_PARTY_RT_FARE_VERIFIED + rule are set.
     totalFareKrw: fare.totalFareKrw,
     currency: fare.currency,
     carrier,
@@ -441,7 +485,6 @@ export async function searchSerpapiFlights(
     roundTrip: true,
     baggageNotes,
     stats: {
-      // Publish min/max/avg only when party RT fare semantics are verified.
       min: fare.totalFareKrw,
       max: fare.totalFareKrw,
       avg: fare.totalFareKrw,

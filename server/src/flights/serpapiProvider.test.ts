@@ -4,6 +4,8 @@ import type { ServerEnv } from '../env.js';
 import { SerpapiApiError } from '../serpapi/errors.js';
 import { FlightSearchService, resolveActiveFlightProvider } from './service.js';
 import {
+  SERPAPI_OBSERVED_PARTY_RT_POLICY,
+  SERPAPI_PARTY_PRICE_RULE,
   SERPAPI_PARTY_RT_FARE_VERIFIED,
   buildSerpapiFlightsParams,
   collectFlightOptions,
@@ -11,6 +13,7 @@ import {
   pickOutboundOption,
   pickReturnOption,
   searchSerpapiFlights,
+  selectedReturnComboPrice,
   toPartyTotalFareKrw,
 } from './serpapiProvider.js';
 import type { FlightSearchRequest } from './types.js';
@@ -252,23 +255,101 @@ describe('SerpApi flights provider (16 mocked HTTP cases)', () => {
     assert.doesNotMatch(quote.summary, /오는편 확인됨/);
   });
 
-  it('7. party RT fare unverified → totalFareKrw null by policy (even with KRW prices)', async () => {
+  it('7. token return price → totalFareKrw (observed unlock; full verified stays false)', async () => {
     assert.equal(SERPAPI_PARTY_RT_FARE_VERIFIED, false);
+    assert.equal(SERPAPI_PARTY_PRICE_RULE, null);
+    assert.equal(SERPAPI_OBSERVED_PARTY_RT_POLICY, 'token_return_party_total');
     mock.method(globalThis, 'fetch', async (url: string | URL) => {
       const params = parseSearchParams(url);
       if (params.get('departure_token')) {
-        return mockJsonResponse(200, { best_flights: [returnOption({ price: 450_000 })] });
+        return mockJsonResponse(200, {
+          best_flights: [returnOption({ price: 450_000, booking_token: 'book-450' })],
+        });
       }
       return mockJsonResponse(200, { best_flights: [flightOption({ price: 420_000 })] });
     });
     const quote = await searchSerpapiFlights(baseEnv(), datedQuery);
-    assert.equal(quote.totalFareKrw, null);
-    assert.equal(quote.stats.min, null);
-    assert.match(quote.summary, /미검증/);
+    assert.equal(quote.totalFareKrw, 450_000);
+    assert.equal(quote.stats.min, 450_000);
+    assert.notEqual(quote.totalFareKrw, 420_000);
+    assert.notEqual(quote.totalFareKrw, 420_000 + 450_000);
+    assert.match(quote.summary, /예상 왕복 항공료/);
   });
 
-  it('8. toPartyTotalFareKrw: unverified → null; verified rules unit-tested', () => {
+  it('7b. never sum outbound+return; never use outbound as RT fare', async () => {
+    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+      const params = parseSearchParams(url);
+      if (params.get('departure_token')) {
+        return mockJsonResponse(200, {
+          best_flights: [returnOption({ price: 300_000, booking_token: 'bk' })],
+        });
+      }
+      return mockJsonResponse(200, {
+        best_flights: [flightOption({ price: 200_000, departure_token: 'tok' })],
+      });
+    });
+    const quote = await searchSerpapiFlights(baseEnv(), datedQuery);
+    assert.equal(quote.totalFareKrw, 300_000);
+    assert.notEqual(quote.totalFareKrw, 500_000);
+    assert.notEqual(quote.totalFareKrw, 200_000);
+  });
+
+  it('7c. adults=2 → passthrough return price (no second × adults)', async () => {
+    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+      const params = parseSearchParams(url);
+      if (params.get('departure_token')) {
+        // SerpApi already returned party total for adults=2
+        return mockJsonResponse(200, {
+          best_flights: [returnOption({ price: 600_000, booking_token: 'bk2' })],
+        });
+      }
+      return mockJsonResponse(200, {
+        best_flights: [flightOption({ price: 600_000, departure_token: 'tok2' })],
+      });
+    });
+    const quote = await searchSerpapiFlights(baseEnv(), {
+      ...datedQuery,
+      travelers: 2,
+    });
+    assert.equal(quote.totalFareKrw, 600_000);
+    assert.notEqual(quote.totalFareKrw, 1_200_000);
+  });
+
+  it('7d. no return options → totalFareKrw null (not outbound fallback)', async () => {
+    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+      const params = parseSearchParams(url);
+      if (params.get('departure_token')) {
+        return mockJsonResponse(200, { best_flights: [], other_flights: [] });
+      }
+      return mockJsonResponse(200, {
+        best_flights: [flightOption({ price: 420_000, departure_token: 'tok' })],
+      });
+    });
+    const quote = await searchSerpapiFlights(baseEnv(), datedQuery);
+    assert.equal(quote.totalFareKrw, null);
+    assert.match(quote.summary, /오는편 미확인|왕복 콤보 표시가 없음/);
+  });
+
+  it('7e. selected return price bound to same option as booking_token', () => {
+    const cheap = returnOption({
+      price: 310_000,
+      booking_token: 'cheap-book',
+      total_duration: 200,
+    });
+    const dear = returnOption({
+      price: 500_000,
+      booking_token: 'dear-book',
+      total_duration: 100,
+    });
+    const picked = pickReturnOption([dear as never, cheap as never]);
+    assert.equal(picked?.booking_token, 'cheap-book');
+    assert.equal(selectedReturnComboPrice(picked), 310_000);
+    assert.notEqual(selectedReturnComboPrice(picked), dear.price);
+  });
+
+  it('8. toPartyTotalFareKrw: observed passthrough + verified rules + non-KRW', () => {
     const env = baseEnv();
+    // Observed unlock path (default policy): adults ignored for multiply
     assert.equal(
       toPartyTotalFareKrw({
         displayedPrice: 200_000,
@@ -277,6 +358,20 @@ describe('SerpApi flights provider (16 mocked HTTP cases)', () => {
         env,
         verified: false,
         rule: null,
+        observedPolicy: 'token_return_party_total',
+      }),
+      200_000,
+    );
+    // Explicit observed off + unverified → null
+    assert.equal(
+      toPartyTotalFareKrw({
+        displayedPrice: 200_000,
+        adults: 2,
+        currency: 'KRW',
+        env,
+        verified: false,
+        rule: null,
+        observedPolicy: null,
       }),
       null,
     );
@@ -288,6 +383,7 @@ describe('SerpApi flights provider (16 mocked HTTP cases)', () => {
         env,
         verified: true,
         rule: 'party_total',
+        observedPolicy: null,
       }),
       200_000,
     );
@@ -299,6 +395,7 @@ describe('SerpApi flights provider (16 mocked HTTP cases)', () => {
         env,
         verified: true,
         rule: 'per_adult',
+        observedPolicy: null,
       }),
       400_000,
     );
@@ -310,6 +407,7 @@ describe('SerpApi flights provider (16 mocked HTTP cases)', () => {
         env: baseEnv({ amadeusKrwPerEur: 1500 }),
         verified: true,
         rule: 'party_total',
+        observedPolicy: null,
       }),
       150_000,
     );
@@ -319,8 +417,29 @@ describe('SerpApi flights provider (16 mocked HTTP cases)', () => {
         adults: 2,
         currency: 'JPY',
         env,
-        verified: true,
-        rule: 'party_total',
+        verified: false,
+        rule: null,
+        observedPolicy: 'token_return_party_total',
+      }),
+      null,
+    );
+    assert.equal(
+      toPartyTotalFareKrw({
+        displayedPrice: Number.NaN,
+        adults: 1,
+        currency: 'KRW',
+        env,
+        observedPolicy: 'token_return_party_total',
+      }),
+      null,
+    );
+    assert.equal(
+      toPartyTotalFareKrw({
+        displayedPrice: -10,
+        adults: 1,
+        currency: 'KRW',
+        env,
+        observedPolicy: 'token_return_party_total',
       }),
       null,
     );
@@ -337,7 +456,7 @@ describe('SerpApi flights provider (16 mocked HTTP cases)', () => {
     assert.equal(quote.isMock, false);
   });
 
-  it('10. missing prices still serpapi with null fare', async () => {
+  it('10. missing / invalid return prices → null fare (serpapi, not Mock)', async () => {
     mock.method(globalThis, 'fetch', async (url: string | URL) => {
       const params = parseSearchParams(url);
       if (params.get('departure_token')) {
@@ -353,6 +472,38 @@ describe('SerpApi flights provider (16 mocked HTTP cases)', () => {
     assert.equal(quote.provider, 'serpapi');
     assert.equal(quote.totalFareKrw, null);
     assert.equal(quote.stats.offerCount, 1);
+    assert.equal(quote.isMock, false);
+
+    mock.restoreAll();
+    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+      const params = parseSearchParams(url);
+      if (params.get('departure_token')) {
+        return mockJsonResponse(200, {
+          best_flights: [returnOption({ price: Number.NaN, booking_token: 'x' })],
+        });
+      }
+      return mockJsonResponse(200, {
+        best_flights: [flightOption({ price: 100_000, departure_token: 't2' })],
+      });
+    });
+    const nanQuote = await searchSerpapiFlights(baseEnv(), datedQuery);
+    assert.equal(nanQuote.totalFareKrw, null);
+    assert.equal(nanQuote.isMock, false);
+
+    mock.restoreAll();
+    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+      const params = parseSearchParams(url);
+      if (params.get('departure_token')) {
+        return mockJsonResponse(200, {
+          best_flights: [returnOption({ price: -1, booking_token: 'neg' })],
+        });
+      }
+      return mockJsonResponse(200, {
+        best_flights: [flightOption({ price: 100_000, departure_token: 't3' })],
+      });
+    });
+    const negQuote = await searchSerpapiFlights(baseEnv(), datedQuery);
+    assert.equal(negQuote.totalFareKrw, null);
   });
 
   it('11. HTTP 401 → SerpapiApiError throw', async () => {

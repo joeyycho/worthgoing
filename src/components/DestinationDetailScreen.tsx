@@ -6,6 +6,11 @@ import { shareTripSnapshot, type ShareTripResult } from '../services/shareTrip';
 import { createTripSnapshot } from '../services/tripSnapshot';
 import type { DestinationRecommendation } from '../types/recommendation';
 import type { TravelSearchFormState } from '../types/travelSearch';
+import {
+  FLIGHT_FARE_PRESENT_DISCLAIMER,
+  FLIGHT_FARE_UNAVAILABLE,
+  flightFareAmountLabel,
+} from '../utils/flightFareDisplay';
 import { CostBreakdownChart } from './CostBreakdownChart';
 import { MockBanner } from './MockBanner';
 import { PriceAsOfNote } from './PriceAsOfNote';
@@ -215,13 +220,15 @@ export function DestinationDetailScreen({
             유연 일정·참고용 예상가입니다. 실제 구매 전 날짜를 지정해 다시 검색하세요.
           </p>
         ) : (
-          <p className="helper-text">
-            검색 시각 {new Date(flight.searchedAt).toLocaleString('ko-KR')} 기준 실시간 시세이며
-            변동될 수 있어요.
+          <p className="helper-text" role="note">
+            {FLIGHT_FARE_PRESENT_DISCLAIMER} 검색 시각{' '}
+            {new Date(flight.searchedAt).toLocaleString('ko-KR')} 기준.
           </p>
         )}
         <p className="detail-strong">
-          {flight.totalFareKrw == null ? '요금 확인불가' : `${formatKrw(flight.totalFareKrw)}원`}
+          {flight.totalFareKrw == null
+            ? `요금 ${FLIGHT_FARE_UNAVAILABLE}`
+            : flightFareAmountLabel(flight.totalFareKrw)}
         </p>
         {flight.stats.offerCount > 0 ? (
           <p className="helper-text">
