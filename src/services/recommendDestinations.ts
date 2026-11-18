@@ -1,3 +1,4 @@
+import { resolveHotelCityCode } from '../data/hotelCityCodes';
 import { MOCK_DESTINATIONS } from '../data/mockDestinations';
 import { ApiAccommodationProvider } from '../providers/ApiAccommodationProvider';
 import { ApiFlightProvider } from '../providers/ApiFlightProvider';
@@ -12,30 +13,6 @@ import type {
 import type { AccommodationQuote, FlightQuote } from '../types/providers';
 import type { TravelSearchFormState } from '../types/travelSearch';
 import { isApiConfigured } from './api/tripApiClient';
-
-/** Airport / destination id → IATA city code for Hotel List by-city */
-const HOTEL_CITY_CODE: Record<string, string> = {
-  KIX: 'OSA',
-  OSA: 'OSA',
-  osaka: 'OSA',
-  BKK: 'BKK',
-  bangkok: 'BKK',
-  DAD: 'DAD',
-  danang: 'DAD',
-  TPE: 'TPE',
-  taipei: 'TPE',
-  CDG: 'PAR',
-  PAR: 'PAR',
-  paris: 'PAR',
-  CJU: 'CJU',
-  jeju: 'CJU',
-  SIN: 'SIN',
-  singapore: 'SIN',
-};
-
-function hotelCityCode(destination: { id: string; airportCode: string }): string | undefined {
-  return HOTEL_CITY_CODE[destination.airportCode] ?? HOTEL_CITY_CODE[destination.id];
-}
 
 function buildMockFlightProvider() {
   const priceFactorByDestination = Object.fromEntries(
@@ -169,7 +146,7 @@ async function loadStayQuotes(
     id: item.id,
     city: item.city,
     country: item.country,
-    cityCode: hotelCityCode(item),
+    cityCode: resolveHotelCityCode(item),
     airportCode: item.airportCode,
   }));
 
@@ -201,7 +178,7 @@ async function loadStayQuotes(
         rooms,
         checkInDate: form.departureDate,
         checkOutDate: form.returnDate,
-        cityCode: hotelCityCode(destination),
+        cityCode: resolveHotelCityCode(destination),
         airportCode: destination.airportCode,
         destinationId: destination.id,
       });
@@ -246,7 +223,7 @@ export async function recommendDestinations(
           rooms: Math.max(1, Math.ceil(form.travelers / 2)),
           checkInDate: form.departureDate,
           checkOutDate: form.returnDate,
-          cityCode: hotelCityCode(destination),
+          cityCode: resolveHotelCityCode(destination),
           airportCode: destination.airportCode,
           destinationId: destination.id,
         }));
