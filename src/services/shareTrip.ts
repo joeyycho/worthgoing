@@ -2,7 +2,8 @@ import { Share } from '@apps-in-toss/web-framework';
 import type { TripSnapshot } from '../types/tripStore';
 import { encodeSnapshotPayload, rememberSharedTrip } from './sharedTripsStore';
 
-const APP_NAME = 'galmanhae';
+/** Must match apps-in-toss.config.ts `appName` / console app id */
+const APP_NAME = 'galman-hae';
 
 export interface ShareTripResult {
   shareId: string;
