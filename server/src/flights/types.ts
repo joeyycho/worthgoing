@@ -35,7 +35,7 @@ export interface FlightQuoteResult {
   roundTrip: boolean;
   baggageNotes: string | null;
   stats: FlightOfferStats;
-  provider: 'amadeus' | 'mock';
+  provider: 'duffel' | 'amadeus' | 'mock';
   destinationId?: string;
   destinationAirport: string;
 }
@@ -54,7 +54,7 @@ export interface BatchFlightSearchResponse {
   dateMode: 'dated' | 'flexible';
   travelers: number;
   roundTrip: boolean;
-  provider: 'amadeus' | 'mock';
+  provider: 'duffel' | 'amadeus' | 'mock';
   results: FlightQuoteResult[];
   persisted: boolean;
 }

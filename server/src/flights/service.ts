@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ServerEnv } from '../env.js';
 import { searchAmadeusFlights } from './amadeusProvider.js';
 import { TtlCache } from './cache.js';
+import { searchDuffelFlights } from './duffelProvider.js';
 import { searchMockFlights } from './mockProvider.js';
 import { persistFlightSearch } from './persist.js';
 import type {
@@ -10,6 +11,14 @@ import type {
   FlightQuoteResult,
   FlightSearchRequest,
 } from './types.js';
+
+export type ActiveFlightProvider = 'duffel' | 'amadeus' | 'mock';
+
+export function resolveActiveFlightProvider(env: ServerEnv): ActiveFlightProvider {
+  if (env.duffelConfigured) return 'duffel';
+  if (env.amadeusConfigured) return 'amadeus';
+  return 'mock';
+}
 
 export class FlightSearchService {
   private readonly cache: TtlCache<FlightQuoteResult>;
@@ -30,7 +39,7 @@ export class FlightSearchService {
       query.tripLengthDays,
       query.departureDate || 'flex',
       query.returnDate || 'flex',
-      this.env.amadeusConfigured ? 'amadeus' : 'mock',
+      resolveActiveFlightProvider(this.env),
     ].join('|');
   }
 
@@ -44,8 +53,18 @@ export class FlightSearchService {
       return { quote: cached, persisted: false };
     }
 
+    const active = resolveActiveFlightProvider(this.env);
     let quote: FlightQuoteResult;
-    if (this.env.amadeusConfigured) {
+
+    if (active === 'duffel') {
+      try {
+        quote = await searchDuffelFlights(this.env, query);
+      } catch (error) {
+        console.warn('Duffel flight search failed; using MOCK', error);
+        quote = searchMockFlights(query);
+        quote.summary = `${quote.summary} · Duffel 실패 폴백`;
+      }
+    } else if (active === 'amadeus') {
       try {
         quote = await searchAmadeusFlights(this.env, query);
       } catch (error) {
@@ -89,7 +108,6 @@ export class FlightSearchService {
 
     const results = pairs.map((pair) => pair.quote);
 
-    // Group / compare under same travelers + round-trip + date mode (already same request).
     results.sort((a, b) => {
       if (a.totalFareKrw == null && b.totalFareKrw == null) return 0;
       if (a.totalFareKrw == null) return 1;
@@ -97,7 +115,11 @@ export class FlightSearchService {
       return a.totalFareKrw - b.totalFareKrw;
     });
 
-    const provider = results.some((item) => item.provider === 'amadeus') ? 'amadeus' : 'mock';
+    const provider: ActiveFlightProvider = results.some((item) => item.provider === 'duffel')
+      ? 'duffel'
+      : results.some((item) => item.provider === 'amadeus')
+        ? 'amadeus'
+        : 'mock';
 
     return {
       searchedAt,

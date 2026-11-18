@@ -15,7 +15,8 @@
     "deploy": "ait deploy",
     "server:dev": "npm run dev --prefix server",
     "server:install": "npm install --prefix server",
-    "server:typecheck": "npm run typecheck --prefix server"
+    "server:typecheck": "npm run typecheck --prefix server",
+    "server:test": "npm run test --prefix server"
   },
   "dependencies": {
     "react": "^19.3.1",

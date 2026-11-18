@@ -27,7 +27,7 @@ Supabase를 쓰려면 `server/.env`에 `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_K
 
 Amadeus 항공·숙소(stage 6–7, still active): `server/.env`에 `AMADEUS_CLIENT_ID` / `AMADEUS_CLIENT_SECRET`을 넣으면 서버가 Flight + Hotel List/Search를 호출합니다. 키가 없거나 API 실패 시 Mock 프로바이더 + MOCK 배너로 폴백합니다. Vite/`VITE_*`에 비밀키를 넣지 마세요.
 
-Duffel (migration in progress): `server/.env`에 `DUFFEL_ACCESS_TOKEN`을 넣으면 `/health`에 `duffelConfigured: true`가 표시됩니다. 토큰은 [Duffel Dashboard](https://app.duffel.com/) → More → Developers → Access tokens에서 발급합니다. **테스트 토큰(`duffel_test_…`)과 라이브 토큰(`duffel_live_…`)을 섞지 마세요** ([test mode](https://duffel.com/docs/api/overview/test-mode)). HTTP 클라이언트는 `server/src/duffel/`에 있으며, 항공·숙소 검색 프로바이더 교체는 이후 단계에서 진행합니다.
+Duffel (migration in progress): `server/.env`에 `DUFFEL_ACCESS_TOKEN`을 넣으면 항공 검색이 **Duffel Flights** (`POST /air/offer_requests`)를 우선 사용합니다 (실패 시 Mock). 토큰이 없고 Amadeus만 있으면 기존 Amadeus 경로를 유지합니다. 토큰은 [Duffel Dashboard](https://app.duffel.com/) → More → Developers → Access tokens에서 발급합니다. **테스트 토큰(`duffel_test_…`)과 라이브 토큰(`duffel_live_…`)을 섞지 마세요** ([test mode](https://duffel.com/docs/api/overview/test-mode)). 숙소(Stays)는 아직 Amadeus입니다.
 
 ## 빌드 / 패키징 / 콘솔 테스트
 
