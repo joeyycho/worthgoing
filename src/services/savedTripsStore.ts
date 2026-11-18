@@ -12,6 +12,11 @@ import {
   localRemoveSavedTrip,
   localSaveTrip,
 } from './localSavedTripsStore';
+import { normalizeTripSnapshot } from './normalizeRecommendationSnapshot';
+
+function withNormalizedSnapshot(trip: SavedTrip): SavedTrip {
+  return { ...trip, snapshot: normalizeTripSnapshot(trip.snapshot) };
+}
 
 async function isSupabaseBackendAvailable(): Promise<boolean> {
   if (!isApiConfigured()) {
@@ -27,7 +32,7 @@ async function isSupabaseBackendAvailable(): Promise<boolean> {
 export async function listSavedTrips(): Promise<SavedTrip[]> {
   if (await isSupabaseBackendAvailable()) {
     try {
-      return await apiListSavedTrips();
+      return (await apiListSavedTrips()).map(withNormalizedSnapshot);
     } catch (error) {
       console.warn('saved trips API failed; falling back to local store', error);
     }
@@ -39,7 +44,8 @@ export async function getSavedTrip(id: string): Promise<SavedTrip | null> {
   if (await isSupabaseBackendAvailable()) {
     try {
       const trips = await apiListSavedTrips();
-      return trips.find((trip) => trip.id === id) ?? null;
+      const hit = trips.find((trip) => trip.id === id) ?? null;
+      return hit ? withNormalizedSnapshot(hit) : null;
     } catch (error) {
       console.warn('saved trip get API failed; falling back to local store', error);
     }

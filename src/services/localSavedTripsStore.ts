@@ -1,8 +1,13 @@
 import type { SavedTrip, TripSnapshot } from '../types/tripStore';
+import { normalizeTripSnapshot } from './normalizeRecommendationSnapshot';
 import { createId } from './tripSnapshot';
 import { kvGet, kvSet } from './kvStore';
 
 const SAVED_TRIPS_KEY = 'galmanhae.savedTrips.v1';
+
+function withNormalizedSnapshot(trip: SavedTrip): SavedTrip {
+  return { ...trip, snapshot: normalizeTripSnapshot(trip.snapshot) };
+}
 
 async function readAll(): Promise<SavedTrip[]> {
   const raw = await kvGet(SAVED_TRIPS_KEY);
@@ -11,7 +16,7 @@ async function readAll(): Promise<SavedTrip[]> {
   }
   try {
     const parsed = JSON.parse(raw) as SavedTrip[];
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.map(withNormalizedSnapshot) : [];
   } catch {
     return [];
   }

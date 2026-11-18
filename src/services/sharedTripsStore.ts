@@ -11,8 +11,13 @@ import {
   localGetSharedTrip,
   localRememberSharedTrip,
 } from './localSharedTripsStore';
+import { normalizeTripSnapshot } from './normalizeRecommendationSnapshot';
 
 export { decodeSnapshotPayload, encodeSnapshotPayload };
+
+function withNormalizedSnapshot(trip: SharedTripRecord): SharedTripRecord {
+  return { ...trip, snapshot: normalizeTripSnapshot(trip.snapshot) };
+}
 
 async function isSupabaseBackendAvailable(): Promise<boolean> {
   if (!isApiConfigured()) {
@@ -42,7 +47,7 @@ export async function getSharedTrip(id: string): Promise<SharedTripRecord | null
     try {
       const remote = await apiGetSharedTrip(id);
       if (remote) {
-        return remote;
+        return withNormalizedSnapshot(remote);
       }
     } catch (error) {
       console.warn('shared trip get API failed; falling back to local store', error);

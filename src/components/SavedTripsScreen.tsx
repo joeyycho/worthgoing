@@ -60,12 +60,12 @@ export function SavedTripsScreen() {
     <section className="saved-screen">
       <header className="results-header">
         <h1 className="page-title">저장한 여행</h1>
-        <p className="page-subtitle">저장 시점의 조건·MOCK 가격을 다시 볼 수 있어요.</p>
+        <p className="page-subtitle">저장 시점의 조건·가격을 다시 볼 수 있어요.</p>
       </header>
 
       <p className="mock-banner" role="note">
         <strong>저장소</strong> · Supabase API가 설정되면 서버에 저장하고, 아니면 Apps in Toss Storage /
-        localStorage로 폴백해요. 가격은 저장 시점 MOCK 기준입니다.
+        localStorage로 폴백해요. 가격은 저장 시점 기준이며 지금 시세와 다를 수 있어요.
       </p>
 
       {loading ? (

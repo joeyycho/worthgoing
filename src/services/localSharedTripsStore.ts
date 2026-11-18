@@ -1,8 +1,13 @@
 import type { SharedTripRecord, TripSnapshot } from '../types/tripStore';
+import { normalizeTripSnapshot } from './normalizeRecommendationSnapshot';
 import { createId } from './tripSnapshot';
 import { kvGet, kvSet } from './kvStore';
 
 const SHARED_TRIPS_KEY = 'galmanhae.sharedTrips.v1';
+
+function withNormalizedSnapshot(trip: SharedTripRecord): SharedTripRecord {
+  return { ...trip, snapshot: normalizeTripSnapshot(trip.snapshot) };
+}
 
 async function readAll(): Promise<SharedTripRecord[]> {
   const raw = await kvGet(SHARED_TRIPS_KEY);
@@ -11,7 +16,7 @@ async function readAll(): Promise<SharedTripRecord[]> {
   }
   try {
     const parsed = JSON.parse(raw) as SharedTripRecord[];
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.map(withNormalizedSnapshot) : [];
   } catch {
     return [];
   }
@@ -59,7 +64,7 @@ export function decodeSnapshotPayload(payload: string): TripSnapshot | null {
     if (parsed?.version !== 1 || !parsed.recommendation || !parsed.form) {
       return null;
     }
-    return parsed;
+    return normalizeTripSnapshot(parsed);
   } catch {
     return null;
   }

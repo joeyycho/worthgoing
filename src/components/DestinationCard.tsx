@@ -13,7 +13,7 @@ function tripTotalLabel(item: DestinationRecommendation): string {
     return '총비용 미확정 · 가격 확인 필요';
   }
   if (item.status === 'local_spend_unknown') {
-    const search = item.searchCost.searchCostTotalKrw;
+    const search = item.searchCost?.searchCostTotalKrw;
     return search == null
       ? '현지비 미확정'
       : `검색 ${formatKrw(search)}원 · 현지비 미확정`;
@@ -100,7 +100,7 @@ export function DestinationCard({ item, onSelect }: DestinationCardProps) {
           <div>
             <dt>검색합</dt>
             <dd>
-              {searchCost.searchCostTotalKrw == null
+              {searchCost?.searchCostTotalKrw == null
                 ? '—'
                 : `${formatKrw(searchCost.searchCostTotalKrw)}원`}
             </dd>
