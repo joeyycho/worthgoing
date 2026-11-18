@@ -347,6 +347,106 @@ describe('SerpApi flights provider (16 mocked HTTP cases)', () => {
     assert.notEqual(selectedReturnComboPrice(picked), dear.price);
   });
 
+  it('7f. price-first: cheaper tokenless return wins; never attach dearer option token', () => {
+    // Scenario A — current price-first policy: cheapest return even without booking_token.
+    const optionA = returnOption({
+      price: 300_000,
+      booking_token: undefined,
+      total_duration: 200,
+      flights: [
+        {
+          departure_airport: { id: 'KIX', name: 'Kansai', time: '2026-06-05 16:00' },
+          arrival_airport: { id: 'ICN', name: 'Incheon', time: '2026-06-05 18:20' },
+          duration: 140,
+          airline: 'Air A',
+          flight_number: 'AA100',
+          extensions: [],
+        },
+      ],
+    });
+    const optionB = returnOption({
+      price: 350_000,
+      booking_token: 'book-350',
+      total_duration: 100,
+      flights: [
+        {
+          departure_airport: { id: 'KIX', name: 'Kansai', time: '2026-06-05 18:00' },
+          arrival_airport: { id: 'ICN', name: 'Incheon', time: '2026-06-05 20:20' },
+          duration: 140,
+          airline: 'Air B',
+          flight_number: 'BB200',
+          extensions: [],
+        },
+      ],
+    });
+
+    // Dearer-token option listed first so selection must be price-driven, not order-driven.
+    const picked = pickReturnOption([optionB as never, optionA as never]);
+    assert.equal(picked?.price, 300_000);
+    assert.equal(selectedReturnComboPrice(picked), 300_000);
+    assert.equal(picked?.booking_token, undefined);
+    assert.notEqual(picked?.booking_token, 'book-350');
+    assert.notEqual(selectedReturnComboPrice(picked), 350_000);
+    // Must not splice Option B's token onto Option A's price object.
+    assert.equal(picked, optionA);
+  });
+
+  it('7f-e2e. price-first tokenless return → totalFareKrw uses 300000 (not book-350)', async () => {
+    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+      const params = parseSearchParams(url);
+      if (params.get('departure_token')) {
+        return mockJsonResponse(200, {
+          best_flights: [
+            returnOption({
+              price: 350_000,
+              booking_token: 'book-350',
+              total_duration: 100,
+            }),
+          ],
+          other_flights: [
+            returnOption({
+              price: 300_000,
+              booking_token: undefined,
+              total_duration: 200,
+            }),
+          ],
+        });
+      }
+      return mockJsonResponse(200, {
+        best_flights: [flightOption({ price: 420_000, departure_token: 'tok-a' })],
+      });
+    });
+    const quote = await searchSerpapiFlights(baseEnv(), datedQuery);
+    assert.equal(quote.totalFareKrw, 300_000);
+    assert.equal(quote.stats.min, 300_000);
+    assert.notEqual(quote.totalFareKrw, 350_000);
+  });
+
+  it('7g. tie-break: same price → prefer return with booking_token', () => {
+    // Scenario B — existing tie-break: when prices match, prefer token-bearing option.
+    const tokenless = returnOption({
+      price: 320_000,
+      booking_token: undefined,
+      total_duration: 90,
+    });
+    const withToken = returnOption({
+      price: 320_000,
+      booking_token: 'book-tie',
+      total_duration: 180,
+    });
+
+    const picked = pickReturnOption([tokenless as never, withToken as never]);
+    assert.equal(picked?.price, 320_000);
+    assert.equal(selectedReturnComboPrice(picked), 320_000);
+    assert.equal(picked?.booking_token, 'book-tie');
+    assert.equal(picked, withToken);
+
+    // Reverse list order — still prefer token-bearing on price tie.
+    const pickedReversed = pickReturnOption([withToken as never, tokenless as never]);
+    assert.equal(pickedReversed?.booking_token, 'book-tie');
+    assert.equal(selectedReturnComboPrice(pickedReversed), 320_000);
+  });
+
   it('8. toPartyTotalFareKrw: observed passthrough + verified rules + non-KRW', () => {
     const env = baseEnv();
     // Observed unlock path (default policy): adults ignored for multiply
