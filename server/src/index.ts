@@ -79,7 +79,7 @@ app.get('/health', (_req, res) => {
       hl: serpapiClientInfo.hl,
       currency: serpapiClientInfo.currency,
     },
-    // Flights: Duffel → Amadeus → mock (SerpApi providers land in later steps). Stays still Amadeus until SerpApi hotels step.
+    // Flights: SerpApi → Duffel → Amadeus → mock. Stays still Amadeus until SerpApi hotels step.
     flightProvider: resolveActiveFlightProvider(env),
     accommodationProvider: env.amadeusConfigured ? 'amadeus' : 'mock',
     mode:

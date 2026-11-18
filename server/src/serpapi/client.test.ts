@@ -262,10 +262,21 @@ describe('SerpApi HTTP client (mocked fetch)', () => {
       assert.equal(info.configured, false);
       assert.equal(JSON.stringify(info).includes('YOUR_'), false);
 
-      // Flight selection still Duffel → Amadeus → mock (SerpApi not wired yet).
+      // Flight selection: SerpApi → Duffel → Amadeus → mock. Missing key → skip SerpApi.
       assert.equal(
         resolveActiveFlightProvider(baseEnv({ serpapiConfigured: false, serpapiApiKey: null })),
         'mock',
+      );
+      assert.equal(
+        resolveActiveFlightProvider(
+          baseEnv({
+            serpapiConfigured: false,
+            serpapiApiKey: null,
+            duffelConfigured: true,
+            duffelAccessToken: 'duffel_test_x',
+          }),
+        ),
+        'duffel',
       );
       assert.equal(
         resolveActiveFlightProvider(
@@ -276,7 +287,7 @@ describe('SerpApi HTTP client (mocked fetch)', () => {
             duffelAccessToken: 'duffel_test_x',
           }),
         ),
-        'duffel',
+        'serpapi',
       );
 
       const service = new FlightSearchService(
