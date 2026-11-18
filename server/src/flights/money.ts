@@ -17,6 +17,25 @@ export function toKrw(amount: number, currency: string, env: ServerEnv): number 
   throw new Error(`Unsupported Amadeus currency for KRW conversion: ${currency}`);
 }
 
+/**
+ * Duffel-safe display conversion: only KRW passthrough and EUR via documented FX env.
+ * Do not invent FX for other currencies (no false KRW totals).
+ */
+export function tryAmountToKrw(
+  amount: number,
+  currency: string,
+  env: ServerEnv,
+): { amountKrw: number; currency: 'KRW' } | { amountKrw: null; currency: string } {
+  const upper = currency.toUpperCase();
+  if (upper === 'KRW') {
+    return { amountKrw: Math.round(amount), currency: 'KRW' };
+  }
+  if (upper === 'EUR') {
+    return { amountKrw: Math.round(amount * env.amadeusKrwPerEur), currency: 'KRW' };
+  }
+  return { amountKrw: null, currency: upper };
+}
+
 export function statsFromAmounts(amounts: number[], currency: string) {
   if (amounts.length === 0) {
     return { min: null, max: null, avg: null, offerCount: 0, currency };

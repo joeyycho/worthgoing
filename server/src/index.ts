@@ -4,7 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { AccommodationSearchService } from './accommodations/service.js';
 import { describeDuffelClient } from './duffel/client.js';
 import { loadServerEnv } from './env.js';
-import { FlightSearchService } from './flights/service.js';
+import { FlightSearchService, resolveActiveFlightProvider } from './flights/service.js';
 import { FixedWindowRateLimiter } from './flights/rateLimit.js';
 import { registerAccommodationRoutes } from './routes/accommodations.js';
 import { registerFlightRoutes } from './routes/flights.js';
@@ -69,8 +69,8 @@ app.get('/health', (_req, res) => {
       apiVersion: duffelClientInfo.apiVersion,
       tokenPrefix: duffelClientInfo.tokenPrefix,
     },
-    // Providers still Amadeus until steps 3–4 swap; Duffel client is scaffolding only.
-    flightProvider: env.amadeusConfigured ? 'amadeus' : 'mock',
+    // Flights: Duffel → Amadeus → mock (never both live providers). Stays still Amadeus until step 4.
+    flightProvider: resolveActiveFlightProvider(env),
     accommodationProvider: env.amadeusConfigured ? 'amadeus' : 'mock',
     mode:
       env.supabaseConfigured || env.amadeusConfigured || env.duffelConfigured
@@ -81,6 +81,6 @@ app.get('/health', (_req, res) => {
 
 app.listen(env.port, () => {
   console.log(
-    `[galmanhae-server] :${env.port} supabase=${env.supabaseConfigured} amadeus=${env.amadeusConfigured} duffel=${env.duffelConfigured}`,
+    `[galmanhae-server] :${env.port} supabase=${env.supabaseConfigured} amadeus=${env.amadeusConfigured} duffel=${env.duffelConfigured} flights=${resolveActiveFlightProvider(env)}`,
   );
 });
