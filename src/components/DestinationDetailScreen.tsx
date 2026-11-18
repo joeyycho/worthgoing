@@ -60,13 +60,16 @@ export function DestinationDetailScreen({
     flight,
     lodging,
     status,
-    estimatedTripTotalKrw,
     remainingKrw,
     remainingPercent,
     searchCost,
     localSpendTotalKrw,
     localSpendMeta,
   } = item;
+  // Defensive fallbacks for any snapshot that slipped past normalize.
+  const estimatedTripTotalKrw =
+    item.estimatedTripTotalKrw ?? item.estimatedTotalKrw ?? null;
+  const searchCostTotalKrw = searchCost?.searchCostTotalKrw ?? null;
   const lodgingQualify = stayPriceQualification(lodging.summary);
   const [saveNote, setSaveNote] = useState<string | null>(null);
   const [shareNote, setShareNote] = useState<string | null>(null);
@@ -145,9 +148,9 @@ export function DestinationDetailScreen({
           <div>
             <dt>검색 합계</dt>
             <dd>
-              {searchCost.searchCostTotalKrw == null
+              {searchCostTotalKrw == null
                 ? '확인불가'
-                : `${formatKrw(searchCost.searchCostTotalKrw)}원`}
+                : `${formatKrw(searchCostTotalKrw)}원`}
             </dd>
           </div>
           <div>
@@ -361,9 +364,9 @@ export function DestinationDetailScreen({
 
       <CostBreakdownChart
         breakdown={item.breakdown}
-        localSpendMeta={localSpendMeta}
-        searchCostTotalKrw={searchCost.searchCostTotalKrw}
-        localSpendTotalKrw={localSpendTotalKrw}
+        localSpendMeta={localSpendMeta ?? null}
+        searchCostTotalKrw={searchCostTotalKrw}
+        localSpendTotalKrw={localSpendTotalKrw ?? null}
         estimatedTripTotalKrw={estimatedTripTotalKrw}
       />
 

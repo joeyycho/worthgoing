@@ -7,11 +7,92 @@ import {
   estimateLocalSpend,
   recommendDestinations,
   resolveBudgetFitStatus,
+  sortRecommendations,
   sumLocalSpend,
 } from './recommendDestinations.js';
+import type { DestinationRecommendation } from '../types/recommendation.js';
 import type { TravelSearchFormState } from '../types/travelSearch.js';
 
 const JAPAN_IDS = ['osaka', 'tokyo', 'fukuoka'] as const;
+
+/** Minimal row for sort-only tests (quote bodies unused by comparator). */
+function sortRow(input: {
+  id: string;
+  city: string;
+  estimatedTripTotalKrw: number | null;
+  searchCostTotalKrw: number | null;
+  status?: DestinationRecommendation['status'];
+  remainingPercent?: number | null;
+}): DestinationRecommendation {
+  return {
+    destination: {
+      id: input.id,
+      city: input.city,
+      country: '테스트',
+      countryCode: 'XX',
+      airportCode: 'XXX',
+      intro: '',
+      photoUrl: '/',
+      photoAlt: '',
+      attractions: [],
+      food: [],
+      activities: [],
+      shopping: [],
+      sampleItinerary: [],
+      priceFactor: 1,
+    },
+    flight: {
+      totalFareKrw: null,
+      carrier: '',
+      summary: '',
+      bookingUrl: '',
+      isMock: true,
+      priceMode: 'mock',
+      searchedAt: '',
+      roundTrip: true,
+      baggageNotes: null,
+      stats: { min: null, max: null, avg: null, offerCount: 0, currency: 'KRW' },
+      provider: 'mock',
+    },
+    lodging: {
+      totalStayKrw: null,
+      perPersonStayKrw: null,
+      propertyName: '',
+      summary: '',
+      bookingUrl: '',
+      isMock: true,
+      priceMode: 'mock',
+      searchedAt: '',
+      nights: 1,
+      rooms: 1,
+      travelers: 1,
+      stats: { min: null, max: null, avg: null, offerCount: 0, currency: 'KRW' },
+      provider: 'mock',
+    },
+    searchCost: {
+      flightTotalKrw: input.searchCostTotalKrw == null ? null : input.searchCostTotalKrw,
+      stayTotalKrw: input.searchCostTotalKrw == null ? null : 0,
+      searchCostTotalKrw: input.searchCostTotalKrw,
+    },
+    localSpend: null,
+    localSpendMeta: null,
+    localSpendTotalKrw: null,
+    breakdown: {
+      flightKrw: null,
+      lodgingKrw: null,
+      activityKrw: null,
+      foodKrw: null,
+      shoppingKrw: null,
+    },
+    estimatedTripTotalKrw: input.estimatedTripTotalKrw,
+    estimatedTotalKrw: input.estimatedTripTotalKrw,
+    totalBudgetKrw: 1_000_000,
+    remainingKrw: null,
+    remainingPercent: input.remainingPercent ?? null,
+    status: input.status ?? 'price_unknown',
+    isMock: true,
+  };
+}
 
 describe('cost calc helpers', () => {
   it('estimateLocalSpend = daily × tripLengthDays × travelers (not nights)', () => {
@@ -152,3 +233,151 @@ describe('recommendDestinations Japan coverage (mock, no live API)', () => {
     }
   });
 });
+
+describe('tiered lowest_cost sort', () => {
+  /**
+   * Audit A–D:
+   * A trip 800k search 500k | B search-only 600k | C trip 800k search 700k | D none
+   * Expected: A → C → B → D (tiers not mixed)
+   */
+  it('orders A→C→B→D (trip tier before search-only; equal trip by search)', () => {
+    const A = sortRow({
+      id: 'a',
+      city: 'A도시',
+      estimatedTripTotalKrw: 800_000,
+      searchCostTotalKrw: 500_000,
+    });
+    const B = sortRow({
+      id: 'b',
+      city: 'B도시',
+      estimatedTripTotalKrw: null,
+      searchCostTotalKrw: 600_000,
+    });
+    const C = sortRow({
+      id: 'c',
+      city: 'C도시',
+      estimatedTripTotalKrw: 800_000,
+      searchCostTotalKrw: 700_000,
+    });
+    const D = sortRow({
+      id: 'd',
+      city: 'D도시',
+      estimatedTripTotalKrw: null,
+      searchCostTotalKrw: null,
+    });
+
+    // Shuffle input so order is not insertion-dependent
+    const sorted = sortRecommendations([B, D, C, A], 'lowest_cost');
+    assert.deepEqual(
+      sorted.map((row) => row.destination.id),
+      ['a', 'c', 'b', 'd'],
+    );
+  });
+
+  it('equal trip uses search secondary; equal search uses name; nulls last in tier', () => {
+    const left = sortRow({
+      id: 'left',
+      city: '가나',
+      estimatedTripTotalKrw: 800_000,
+      searchCostTotalKrw: 500_000,
+    });
+    const right = sortRow({
+      id: 'right',
+      city: '다라',
+      estimatedTripTotalKrw: 800_000,
+      searchCostTotalKrw: 500_000,
+    });
+    const equalTrip = sortRecommendations([right, left], 'lowest_cost');
+    assert.deepEqual(
+      equalTrip.map((row) => row.destination.id),
+      ['left', 'right'],
+    );
+
+    const s1 = sortRow({
+      id: 's1',
+      city: '서울',
+      estimatedTripTotalKrw: null,
+      searchCostTotalKrw: 100_000,
+    });
+    const s2 = sortRow({
+      id: 's2',
+      city: '부산',
+      estimatedTripTotalKrw: null,
+      searchCostTotalKrw: 100_000,
+    });
+    const equalSearch = sortRecommendations([s1, s2], 'lowest_cost');
+    assert.deepEqual(
+      equalSearch.map((row) => row.destination.city),
+      ['부산', '서울'],
+    );
+
+    const withSearch = sortRow({
+      id: 'has',
+      city: '있음',
+      estimatedTripTotalKrw: 500_000,
+      searchCostTotalKrw: 200_000,
+    });
+    const tripNullSearch = sortRow({
+      id: 'trip-only-search-null',
+      city: '검색없음',
+      estimatedTripTotalKrw: 500_000,
+      searchCostTotalKrw: null,
+    });
+    const nullSearchLast = sortRecommendations([tripNullSearch, withSearch], 'lowest_cost');
+    assert.deepEqual(
+      nullSearchLast.map((row) => row.destination.id),
+      ['has', 'trip-only-search-null'],
+    );
+  });
+
+  it('does not mutate input array or rows', () => {
+    const rows = [
+      sortRow({
+        id: 'z',
+        city: 'Z',
+        estimatedTripTotalKrw: null,
+        searchCostTotalKrw: null,
+      }),
+      sortRow({
+        id: 'a',
+        city: 'A',
+        estimatedTripTotalKrw: 100,
+        searchCostTotalKrw: 50,
+      }),
+    ];
+    const before = rows.map((row) => row.destination.id);
+    const sorted = sortRecommendations(rows, 'lowest_cost');
+    assert.deepEqual(
+      rows.map((row) => row.destination.id),
+      before,
+    );
+    assert.notEqual(sorted, rows);
+    assert.deepEqual(
+      sorted.map((row) => row.destination.id),
+      ['a', 'z'],
+    );
+  });
+
+  it('recommended mode still prioritizes status before tiered cost', () => {
+    const withinExpensive = sortRow({
+      id: 'within-hi',
+      city: '비쌈',
+      estimatedTripTotalKrw: 900_000,
+      searchCostTotalKrw: 500_000,
+      status: 'within_budget_estimate',
+      remainingPercent: 10,
+    });
+    const overCheap = sortRow({
+      id: 'over-lo',
+      city: '쌈',
+      estimatedTripTotalKrw: 100_000,
+      searchCostTotalKrw: 50_000,
+      status: 'over_budget_estimate',
+      remainingPercent: -50,
+    });
+    const sorted = sortRecommendations([overCheap, withinExpensive], 'recommended');
+    assert.equal(sorted[0]?.destination.id, 'within-hi');
+    assert.equal(sorted[1]?.destination.id, 'over-lo');
+  });
+});
+

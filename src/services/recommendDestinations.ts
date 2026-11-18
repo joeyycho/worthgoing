@@ -119,25 +119,63 @@ function sortRank(status: BudgetFitStatus): number {
   }
 }
 
-function sortRecommendations(
+/**
+ * Tiered cost comparison — never mix trip totals with search-only subtotals as one number.
+ * Tier 0: estimatedTripTotalKrw present → trip asc, then searchCostTotal, then city.
+ * Tier 1: search-only (trip null, search total present) → search asc, then city.
+ * Tier 2: no comparable cost → city only (last).
+ */
+export function compareTieredCost(
+  a: DestinationRecommendation,
+  b: DestinationRecommendation,
+): number {
+  const tierOf = (item: DestinationRecommendation): 0 | 1 | 2 => {
+    if (item.estimatedTripTotalKrw != null) return 0;
+    if (item.searchCost.searchCostTotalKrw != null) return 1;
+    return 2;
+  };
+
+  const tierA = tierOf(a);
+  const tierB = tierOf(b);
+  if (tierA !== tierB) return tierA - tierB;
+
+  const byCity = () => a.destination.city.localeCompare(b.destination.city, 'ko');
+
+  if (tierA === 0) {
+    const tripDiff = (a.estimatedTripTotalKrw as number) - (b.estimatedTripTotalKrw as number);
+    if (tripDiff !== 0) return tripDiff;
+
+    const aSearch = a.searchCost.searchCostTotalKrw;
+    const bSearch = b.searchCost.searchCostTotalKrw;
+    if (aSearch != null && bSearch != null && aSearch !== bSearch) {
+      return aSearch - bSearch;
+    }
+    if (aSearch == null && bSearch != null) return 1;
+    if (bSearch == null && aSearch != null) return -1;
+    return byCity();
+  }
+
+  if (tierA === 1) {
+    const searchDiff =
+      (a.searchCost.searchCostTotalKrw as number) - (b.searchCost.searchCostTotalKrw as number);
+    if (searchDiff !== 0) return searchDiff;
+    return byCity();
+  }
+
+  return byCity();
+}
+
+export function sortRecommendations(
   items: DestinationRecommendation[],
   sort: RecommendationSort,
 ): DestinationRecommendation[] {
   const copy = [...items];
 
   if (sort === 'lowest_cost') {
-    return copy.sort((a, b) => {
-      const aCost = a.estimatedTripTotalKrw ?? a.searchCost.searchCostTotalKrw;
-      const bCost = b.estimatedTripTotalKrw ?? b.searchCost.searchCostTotalKrw;
-      if (aCost == null && bCost == null) {
-        return a.destination.city.localeCompare(b.destination.city, 'ko');
-      }
-      if (aCost == null) return 1;
-      if (bCost == null) return -1;
-      return aCost - bCost;
-    });
+    return copy.sort(compareTieredCost);
   }
 
+  // recommended: status → remaining% → same tiered cost comparator (not mixed ??)
   return copy.sort((a, b) => {
     const statusDiff = sortRank(a.status) - sortRank(b.status);
     if (statusDiff !== 0) return statusDiff;
@@ -146,11 +184,7 @@ function sortRecommendations(
     const bRemain = b.remainingPercent ?? -999;
     if (bRemain !== aRemain) return bRemain - aRemain;
 
-    const aCost =
-      a.estimatedTripTotalKrw ?? a.searchCost.searchCostTotalKrw ?? Number.MAX_SAFE_INTEGER;
-    const bCost =
-      b.estimatedTripTotalKrw ?? b.searchCost.searchCostTotalKrw ?? Number.MAX_SAFE_INTEGER;
-    return aCost - bCost;
+    return compareTieredCost(a, b);
   });
 }
 
