@@ -1,7 +1,10 @@
 import cors from 'cors';
 import express from 'express';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { AccommodationSearchService } from './accommodations/service.js';
+import {
+  AccommodationSearchService,
+  resolveActiveAccommodationProvider,
+} from './accommodations/service.js';
 import { describeDuffelClient } from './duffel/client.js';
 import { loadServerEnv } from './env.js';
 import { FlightSearchService, resolveActiveFlightProvider } from './flights/service.js';
@@ -79,9 +82,9 @@ app.get('/health', (_req, res) => {
       hl: serpapiClientInfo.hl,
       currency: serpapiClientInfo.currency,
     },
-    // Flights: SerpApi → Duffel → Amadeus → mock. Stays still Amadeus until SerpApi hotels step.
+    // Flights: SerpApi → Duffel → Amadeus → mock. Stays: SerpApi → Amadeus → mock.
     flightProvider: resolveActiveFlightProvider(env),
-    accommodationProvider: env.amadeusConfigured ? 'amadeus' : 'mock',
+    accommodationProvider: resolveActiveAccommodationProvider(env),
     mode:
       env.supabaseConfigured ||
       env.amadeusConfigured ||
@@ -94,6 +97,6 @@ app.get('/health', (_req, res) => {
 
 app.listen(env.port, () => {
   console.log(
-    `[galmanhae-server] :${env.port} supabase=${env.supabaseConfigured} amadeus=${env.amadeusConfigured} duffel=${env.duffelConfigured} serpapi=${env.serpapiConfigured} flights=${resolveActiveFlightProvider(env)}`,
+    `[galmanhae-server] :${env.port} supabase=${env.supabaseConfigured} amadeus=${env.amadeusConfigured} duffel=${env.duffelConfigured} serpapi=${env.serpapiConfigured} flights=${resolveActiveFlightProvider(env)} stays=${resolveActiveAccommodationProvider(env)}`,
   );
 });
