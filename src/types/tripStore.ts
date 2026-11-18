@@ -9,8 +9,8 @@ export interface TripSnapshot {
   capturedAt: string;
   form: TravelSearchFormState;
   recommendation: DestinationRecommendation;
-  /** Always true while stage 3 mock providers are in use */
-  isMock: true;
+  /** True when any quote in the snapshot is mock / non-purchase-confirmed */
+  isMock: boolean;
   /**
    * `supabase` when persisted via the stage-5 server API.
    * `client-local-mock` when using Apps in Toss Storage / localStorage fallback.

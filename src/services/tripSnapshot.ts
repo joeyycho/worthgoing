@@ -4,7 +4,7 @@ import { TRIP_SNAPSHOT_VERSION, type TripSnapshot } from '../types/tripStore';
 import { isApiConfigured } from './api/tripApiClient';
 
 export const PRICE_AS_OF_DISCLAIMER =
-  '표시된 가격은 저장·공유 시점의 MOCK 예시이며, 지금 시점의 실시간 시세와 다를 수 있어요.';
+  '표시된 가격은 저장·공유 시점 기준이며 확정 구매가가 아닙니다. 지금 시점의 실시간 시세와 다를 수 있어요.';
 
 export function createTripSnapshot(
   form: TravelSearchFormState,
@@ -16,7 +16,7 @@ export function createTripSnapshot(
     capturedAt,
     form: structuredClone(form),
     recommendation: structuredClone(recommendation),
-    isMock: true,
+    isMock: recommendation.isMock,
     storageKind: isApiConfigured() ? 'supabase' : 'client-local-mock',
   };
 }

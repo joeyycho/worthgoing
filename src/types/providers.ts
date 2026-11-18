@@ -1,5 +1,7 @@
 import type { AirportCode } from './travelSearch';
 
+export type FlightPriceMode = 'live' | 'indicative' | 'mock';
+
 export interface FlightQuoteQuery {
   originAirports: AirportCode[];
   destinationAirport: string;
@@ -7,17 +9,31 @@ export interface FlightQuoteQuery {
   tripLengthDays: number;
   departureDate: string;
   returnDate: string;
-  /** Internal mock catalog id (not a live GDS field) */
+  /** Internal catalog id (not a live GDS field) */
   destinationId?: string;
 }
 
+export interface FlightOfferStats {
+  min: number | null;
+  max: number | null;
+  avg: number | null;
+  offerCount: number;
+  currency: string;
+}
+
 export interface FlightQuote {
-  /** null means mock price unavailable — must not be shown as confirmed */
+  /** null means price unavailable — must not be shown as confirmed */
   totalFareKrw: number | null;
   carrier: string;
   summary: string;
   bookingUrl: string;
-  isMock: true;
+  isMock: boolean;
+  priceMode: FlightPriceMode;
+  searchedAt: string;
+  roundTrip: boolean;
+  baggageNotes: string | null;
+  stats: FlightOfferStats;
+  provider: 'amadeus' | 'mock';
 }
 
 export interface FlightProvider {
@@ -31,7 +47,7 @@ export interface AccommodationQuoteQuery {
   nights: number;
   checkInDate: string;
   checkOutDate: string;
-  /** Internal mock catalog id (not a live hotel-API field) */
+  /** Internal catalog id (not a live hotel-API field) */
   destinationId?: string;
 }
 

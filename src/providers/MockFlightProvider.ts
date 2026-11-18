@@ -31,6 +31,8 @@ export class MockFlightProvider implements FlightProvider {
 
     const destinationId = query.destinationId ?? query.destinationAirport;
     const bookingUrl = `https://example.com/mock-flights?dest=${encodeURIComponent(query.destinationAirport)}&pax=${query.travelers}`;
+    const searchedAt = new Date().toISOString();
+    const flexible = !query.departureDate && !query.returnDate;
 
     if (this.forceUnknownIds.has(destinationId)) {
       return {
@@ -39,6 +41,12 @@ export class MockFlightProvider implements FlightProvider {
         summary: '목업 항공 시세 확인 중 — 확정 요금이 아니에요.',
         bookingUrl,
         isMock: true,
+        priceMode: 'mock',
+        searchedAt,
+        roundTrip: true,
+        baggageNotes: null,
+        stats: { min: null, max: null, avg: null, offerCount: 0, currency: 'KRW' },
+        provider: 'mock',
       };
     }
 
@@ -47,13 +55,29 @@ export class MockFlightProvider implements FlightProvider {
     const originBias = query.originAirports.includes('ICN') ? 1 : 1.08;
     const lengthBias = 1 + Math.max(0, query.tripLengthDays - 4) * 0.015;
     const perPerson = Math.round((base * factor * originBias * lengthBias) / 10_000) * 10_000;
+    const total = perPerson * query.travelers;
+    const spread = Math.round(total * 0.12);
 
     return {
-      totalFareKrw: perPerson * query.travelers,
+      totalFareKrw: total,
       carrier: 'MOCK AIR',
-      summary: `${query.originAirports.join('/')} → ${query.destinationAirport} 왕복 · ${query.travelers}명 (MOCK)`,
+      summary: flexible
+        ? `${query.originAirports.join('/')} → ${query.destinationAirport} 왕복 · ${query.travelers}명 (MOCK 유연 일정)`
+        : `${query.originAirports.join('/')} → ${query.destinationAirport} 왕복 · ${query.travelers}명 (MOCK)`,
       bookingUrl,
       isMock: true,
+      priceMode: 'mock',
+      searchedAt,
+      roundTrip: true,
+      baggageNotes: 'MOCK · 수하물 정보는 예시입니다.',
+      stats: {
+        min: total,
+        max: total + spread,
+        avg: total + Math.round(spread / 2),
+        offerCount: 3,
+        currency: 'KRW',
+      },
+      provider: 'mock',
     };
   }
 }

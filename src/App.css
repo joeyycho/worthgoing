@@ -622,6 +622,25 @@
   font-size: 18px;
 }
 
+.flight-mode-chip {
+  margin: 0;
+  color: #4e5968;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.flight-mode-chip[data-mode='mock'] {
+  color: #b42318;
+}
+
+.flight-mode-chip[data-mode='indicative'] {
+  color: #8a6116;
+}
+
+.flight-mode-chip[data-mode='live'] {
+  color: #0f7b45;
+}
+
 .destination-card-meta {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

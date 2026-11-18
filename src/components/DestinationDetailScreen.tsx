@@ -182,15 +182,46 @@ export function DestinationDetailScreen({
       ) : null}
 
       <section className="detail-block">
-        <h2 className="section-title">항공 (MOCK)</h2>
+        <h2 className="section-title">
+          항공{' '}
+          {flight.priceMode === 'mock'
+            ? '(MOCK)'
+            : flight.priceMode === 'indicative'
+              ? '(예상가)'
+              : '(검색 시점)'}
+        </h2>
+        {flight.isMock ? (
+          <p className="mock-banner" role="note">
+            <strong>MOCK</strong> · 항공 요금은 예시이며 구매 확정가가 아닙니다.
+          </p>
+        ) : flight.priceMode === 'indicative' ? (
+          <p className="status-note flexible-note" role="note">
+            유연 일정·참고용 예상가입니다. 실제 구매 전 날짜를 지정해 다시 검색하세요.
+          </p>
+        ) : (
+          <p className="helper-text">
+            검색 시각 {new Date(flight.searchedAt).toLocaleString('ko-KR')} 기준 시세이며 변동될 수
+            있어요.
+          </p>
+        )}
         <p className="detail-strong">
           {flight.totalFareKrw == null ? '요금 확인 필요' : `${formatKrw(flight.totalFareKrw)}원`}
         </p>
+        {flight.stats.offerCount > 0 ? (
+          <p className="helper-text">
+            최저 {flight.stats.min == null ? '—' : `${formatKrw(flight.stats.min)}원`} · 평균{' '}
+            {flight.stats.avg == null ? '—' : `${formatKrw(flight.stats.avg)}원`} · 최고{' '}
+            {flight.stats.max == null ? '—' : `${formatKrw(flight.stats.max)}원`} ({flight.stats.offerCount}
+            건)
+          </p>
+        ) : null}
         <p className="helper-text">
           {flight.carrier} · {flight.summary}
+          {flight.roundTrip ? ' · 왕복' : ''}
         </p>
+        {flight.baggageNotes ? <p className="helper-text">{flight.baggageNotes}</p> : null}
         <a className="external-link" href={flight.bookingUrl} target="_blank" rel="noopener noreferrer">
-          목업 예약 링크 열기
+          예약/상세 링크 열기
         </a>
       </section>
 

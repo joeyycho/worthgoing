@@ -1,4 +1,5 @@
 import { MOCK_DESTINATIONS } from '../data/mockDestinations';
+import { ApiFlightProvider } from '../providers/ApiFlightProvider';
 import { MockAccommodationProvider } from '../providers/MockAccommodationProvider';
 import { MockFlightProvider } from '../providers/MockFlightProvider';
 import type {
@@ -7,20 +8,28 @@ import type {
   LocalSpendEstimate,
   RecommendationSort,
 } from '../types/recommendation';
+import type { FlightQuote } from '../types/providers';
 import type { TravelSearchFormState } from '../types/travelSearch';
+import { isApiConfigured } from './api/tripApiClient';
 
-function buildProviders() {
+function buildMockFlightProvider() {
   const priceFactorByDestination = Object.fromEntries(
     MOCK_DESTINATIONS.map((item) => [item.id, item.priceFactor]),
   );
   const forceUnknownIds = new Set(
     MOCK_DESTINATIONS.filter((item) => item.forcePriceUnknown).map((item) => item.id),
   );
+  return new MockFlightProvider({ priceFactorByDestination, forceUnknownIds });
+}
 
-  return {
-    flights: new MockFlightProvider({ priceFactorByDestination, forceUnknownIds }),
-    stays: new MockAccommodationProvider({ priceFactorByDestination, forceUnknownIds }),
-  };
+function buildStayProvider() {
+  const priceFactorByDestination = Object.fromEntries(
+    MOCK_DESTINATIONS.map((item) => [item.id, item.priceFactor]),
+  );
+  const forceUnknownIds = new Set(
+    MOCK_DESTINATIONS.filter((item) => item.forcePriceUnknown).map((item) => item.id),
+  );
+  return new MockAccommodationProvider({ priceFactorByDestination, forceUnknownIds });
 }
 
 function estimateLocalSpend(
@@ -54,14 +63,15 @@ function sortRecommendations(
 
   if (sort === 'lowest_cost') {
     return copy.sort((a, b) => {
-      if (a.estimatedTotalKrw == null && b.estimatedTotalKrw == null) return a.destination.city.localeCompare(b.destination.city, 'ko');
+      if (a.estimatedTotalKrw == null && b.estimatedTotalKrw == null) {
+        return a.destination.city.localeCompare(b.destination.city, 'ko');
+      }
       if (a.estimatedTotalKrw == null) return 1;
       if (b.estimatedTotalKrw == null) return -1;
       return a.estimatedTotalKrw - b.estimatedTotalKrw;
     });
   }
 
-  // recommended: prefer in-budget, then higher remaining %, then lower cost
   const rank: Record<BudgetFitStatus, number> = {
     within_budget: 0,
     price_unknown: 1,
@@ -82,18 +92,62 @@ function sortRecommendations(
   });
 }
 
+async function loadFlightQuotes(form: TravelSearchFormState): Promise<Map<string, FlightQuote>> {
+  const mock = buildMockFlightProvider();
+  const destinations = MOCK_DESTINATIONS.map((item) => ({
+    id: item.id,
+    airportCode: item.airportCode,
+  }));
+
+  if (isApiConfigured()) {
+    try {
+      const api = new ApiFlightProvider();
+      return await api.searchBatch(
+        {
+          originAirports: form.departureAirports,
+          travelers: form.travelers,
+          tripLengthDays: form.tripLengthDays,
+          departureDate: form.departureDate,
+          returnDate: form.returnDate,
+        },
+        destinations,
+      );
+    } catch (error) {
+      console.warn('Flight API unavailable; using MockFlightProvider', error);
+    }
+  }
+
+  const entries = await Promise.all(
+    MOCK_DESTINATIONS.map(async (destination) => {
+      const quote = await mock.searchFlights({
+        originAirports: form.departureAirports,
+        destinationAirport: destination.airportCode,
+        travelers: form.travelers,
+        tripLengthDays: form.tripLengthDays,
+        departureDate: form.departureDate,
+        returnDate: form.returnDate,
+        destinationId: destination.id,
+      });
+      return [destination.id, quote] as const;
+    }),
+  );
+  return new Map(entries);
+}
+
 export async function recommendDestinations(
   form: TravelSearchFormState,
   sort: RecommendationSort = 'lowest_cost',
 ): Promise<DestinationRecommendation[]> {
   const totalBudgetKrw = form.budgetPerPerson * form.travelers;
   const nights = Math.max(1, form.tripLengthDays - 1);
-  const { flights, stays } = buildProviders();
+  const stays = buildStayProvider();
+  const flightMap = await loadFlightQuotes(form);
 
   const rows = await Promise.all(
     MOCK_DESTINATIONS.map(async (destination) => {
-      const [flight, lodging] = await Promise.all([
-        flights.searchFlights({
+      const flight =
+        flightMap.get(destination.id) ??
+        (await buildMockFlightProvider().searchFlights({
           originAirports: form.departureAirports,
           destinationAirport: destination.airportCode,
           travelers: form.travelers,
@@ -101,17 +155,17 @@ export async function recommendDestinations(
           departureDate: form.departureDate,
           returnDate: form.returnDate,
           destinationId: destination.id,
-        }),
-        stays.searchAccommodations({
-          city: destination.city,
-          country: destination.country,
-          travelers: form.travelers,
-          nights,
-          checkInDate: form.departureDate,
-          checkOutDate: form.returnDate,
-          destinationId: destination.id,
-        }),
-      ]);
+        }));
+
+      const lodging = await stays.searchAccommodations({
+        city: destination.city,
+        country: destination.country,
+        travelers: form.travelers,
+        nights,
+        checkInDate: form.departureDate,
+        checkOutDate: form.returnDate,
+        destinationId: destination.id,
+      });
 
       const localSpend = estimateLocalSpend(
         destination.localDailyPerPerson,
@@ -147,7 +201,7 @@ export async function recommendDestinations(
         remainingKrw,
         remainingPercent,
         status: resolveStatus(estimatedTotalKrw, totalBudgetKrw),
-        isMock: true,
+        isMock: flight.isMock || lodging.isMock,
       };
 
       return recommendation;
