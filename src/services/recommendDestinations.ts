@@ -7,12 +7,21 @@ import { MockFlightProvider } from '../providers/MockFlightProvider';
 import type {
   BudgetFitStatus,
   DestinationRecommendation,
+  LocalDailyPerPerson,
   LocalSpendEstimate,
+  LocalSpendMeta,
   RecommendationSort,
+  SearchCostTotals,
 } from '../types/recommendation';
 import type { AccommodationQuote, FlightQuote } from '../types/providers';
 import type { TravelSearchFormState } from '../types/travelSearch';
 import { isApiConfigured } from './api/tripApiClient';
+
+const LOCAL_SPEND_META: LocalSpendMeta = {
+  source: 'catalog_daily_estimate',
+  confidence: 'low',
+  isEstimated: true,
+};
 
 function buildMockFlightProvider() {
   const priceFactorByDestination = Object.fromEntries(
@@ -34,8 +43,13 @@ function buildMockStayProvider() {
   return new MockAccommodationProvider({ priceFactorByDestination, forceUnknownIds });
 }
 
-function estimateLocalSpend(
-  daily: LocalSpendEstimate,
+/**
+ * Local spend uses `tripLengthDays` (calendar days, e.g. 4박5일 → 5).
+ * Hotel nights use `tripLengthDays - 1` separately — do not mix the two.
+ * Transport is intentionally omitted (unimplemented — never invent 0).
+ */
+export function estimateLocalSpend(
+  daily: LocalDailyPerPerson,
   travelers: number,
   tripLengthDays: number,
 ): LocalSpendEstimate {
@@ -47,14 +61,62 @@ function estimateLocalSpend(
   };
 }
 
-function resolveStatus(
-  estimatedTotalKrw: number | null,
-  totalBudgetKrw: number,
-): BudgetFitStatus {
-  if (estimatedTotalKrw == null) {
+export function sumLocalSpend(local: LocalSpendEstimate): number {
+  return (
+    local.activityKrw +
+    local.foodKrw +
+    local.shoppingKrw +
+    (local.transportKrw ?? 0)
+  );
+}
+
+export function buildSearchCostTotals(
+  flightTotalKrw: number | null,
+  stayTotalKrw: number | null,
+): SearchCostTotals {
+  const searchCostTotalKrw =
+    flightTotalKrw != null && stayTotalKrw != null ? flightTotalKrw + stayTotalKrw : null;
+  return { flightTotalKrw, stayTotalKrw, searchCostTotalKrw };
+}
+
+/**
+ * Status rules:
+ * - missing live flight or stay → price_unknown (never claim within on search-only)
+ * - live pair present but local catalog missing → local_spend_unknown (no invented fit)
+ * - both present → within/over_budget_estimate (estimate wording; not confirmed booking)
+ */
+export function resolveBudgetFitStatus(input: {
+  searchCostTotalKrw: number | null;
+  localSpendTotalKrw: number | null;
+  estimatedTripTotalKrw: number | null;
+  totalBudgetKrw: number;
+}): BudgetFitStatus {
+  if (input.searchCostTotalKrw == null) {
     return 'price_unknown';
   }
-  return estimatedTotalKrw <= totalBudgetKrw ? 'within_budget' : 'over_budget';
+  if (input.localSpendTotalKrw == null || input.estimatedTripTotalKrw == null) {
+    return 'local_spend_unknown';
+  }
+  return input.estimatedTripTotalKrw <= input.totalBudgetKrw
+    ? 'within_budget_estimate'
+    : 'over_budget_estimate';
+}
+
+function sortRank(status: BudgetFitStatus): number {
+  switch (status) {
+    case 'within_budget_estimate':
+    case 'within_budget':
+      return 0;
+    case 'local_spend_unknown':
+      return 1;
+    case 'price_unknown':
+      return 2;
+    case 'over_budget_estimate':
+    case 'over_budget':
+      return 3;
+    default:
+      return 2;
+  }
 }
 
 function sortRecommendations(
@@ -65,31 +127,29 @@ function sortRecommendations(
 
   if (sort === 'lowest_cost') {
     return copy.sort((a, b) => {
-      if (a.estimatedTotalKrw == null && b.estimatedTotalKrw == null) {
+      const aCost = a.estimatedTripTotalKrw ?? a.searchCost.searchCostTotalKrw;
+      const bCost = b.estimatedTripTotalKrw ?? b.searchCost.searchCostTotalKrw;
+      if (aCost == null && bCost == null) {
         return a.destination.city.localeCompare(b.destination.city, 'ko');
       }
-      if (a.estimatedTotalKrw == null) return 1;
-      if (b.estimatedTotalKrw == null) return -1;
-      return a.estimatedTotalKrw - b.estimatedTotalKrw;
+      if (aCost == null) return 1;
+      if (bCost == null) return -1;
+      return aCost - bCost;
     });
   }
 
-  const rank: Record<BudgetFitStatus, number> = {
-    within_budget: 0,
-    price_unknown: 1,
-    over_budget: 2,
-  };
-
   return copy.sort((a, b) => {
-    const statusDiff = rank[a.status] - rank[b.status];
+    const statusDiff = sortRank(a.status) - sortRank(b.status);
     if (statusDiff !== 0) return statusDiff;
 
     const aRemain = a.remainingPercent ?? -999;
     const bRemain = b.remainingPercent ?? -999;
     if (bRemain !== aRemain) return bRemain - aRemain;
 
-    const aCost = a.estimatedTotalKrw ?? Number.MAX_SAFE_INTEGER;
-    const bCost = b.estimatedTotalKrw ?? Number.MAX_SAFE_INTEGER;
+    const aCost =
+      a.estimatedTripTotalKrw ?? a.searchCost.searchCostTotalKrw ?? Number.MAX_SAFE_INTEGER;
+    const bCost =
+      b.estimatedTripTotalKrw ?? b.searchCost.searchCostTotalKrw ?? Number.MAX_SAFE_INTEGER;
     return aCost - bCost;
   });
 }
@@ -193,6 +253,7 @@ export async function recommendDestinations(
   sort: RecommendationSort = 'lowest_cost',
 ): Promise<DestinationRecommendation[]> {
   const totalBudgetKrw = form.budgetPerPerson * form.travelers;
+  /** Hotel nights for 4박5일: tripLengthDays 5 → 4 nights. */
   const nights = Math.max(1, form.tripLengthDays - 1);
   const [flightMap, stayMap] = await Promise.all([
     loadFlightQuotes(form),
@@ -228,40 +289,56 @@ export async function recommendDestinations(
           destinationId: destination.id,
         }));
 
-      const localSpend = estimateLocalSpend(
-        destination.localDailyPerPerson,
-        form.travelers,
-        form.tripLengthDays,
-      );
+      const searchCost = buildSearchCostTotals(flight.totalFareKrw, lodging.totalStayKrw);
 
-      const localTotal = localSpend.activityKrw + localSpend.foodKrw + localSpend.shoppingKrw;
-      const hasConfirmedQuotes = flight.totalFareKrw != null && lodging.totalStayKrw != null;
-      const estimatedTotalKrw = hasConfirmedQuotes
-        ? (flight.totalFareKrw as number) + (lodging.totalStayKrw as number) + localTotal
-        : null;
+      const dailyLocal = destination.localDailyPerPerson;
+      const localSpend =
+        dailyLocal != null
+          ? estimateLocalSpend(dailyLocal, form.travelers, form.tripLengthDays)
+          : null;
+      const localSpendMeta = localSpend != null ? LOCAL_SPEND_META : null;
+      const localSpendTotalKrw = localSpend != null ? sumLocalSpend(localSpend) : null;
+
+      const estimatedTripTotalKrw =
+        searchCost.searchCostTotalKrw != null && localSpendTotalKrw != null
+          ? searchCost.searchCostTotalKrw + localSpendTotalKrw
+          : null;
 
       const remainingKrw =
-        estimatedTotalKrw == null ? null : totalBudgetKrw - estimatedTotalKrw;
+        estimatedTripTotalKrw == null ? null : totalBudgetKrw - estimatedTripTotalKrw;
       const remainingPercent =
         remainingKrw == null ? null : Math.round((remainingKrw / totalBudgetKrw) * 1000) / 10;
+
+      const status = resolveBudgetFitStatus({
+        searchCostTotalKrw: searchCost.searchCostTotalKrw,
+        localSpendTotalKrw,
+        estimatedTripTotalKrw,
+        totalBudgetKrw,
+      });
 
       const recommendation: DestinationRecommendation = {
         destination,
         flight,
         lodging,
+        searchCost,
         localSpend,
+        localSpendMeta,
+        localSpendTotalKrw,
         breakdown: {
-          flightKrw: flight.totalFareKrw,
-          lodgingKrw: lodging.totalStayKrw,
-          activityKrw: localSpend.activityKrw,
-          foodKrw: localSpend.foodKrw,
-          shoppingKrw: localSpend.shoppingKrw,
+          flightKrw: searchCost.flightTotalKrw,
+          lodgingKrw: searchCost.stayTotalKrw,
+          activityKrw: localSpend?.activityKrw ?? null,
+          foodKrw: localSpend?.foodKrw ?? null,
+          shoppingKrw: localSpend?.shoppingKrw ?? null,
+          // transport omitted when unimplemented — never force 0
+          ...(localSpend?.transportKrw != null ? { transportKrw: localSpend.transportKrw } : {}),
         },
-        estimatedTotalKrw,
+        estimatedTripTotalKrw,
+        estimatedTotalKrw: estimatedTripTotalKrw,
         totalBudgetKrw,
         remainingKrw,
         remainingPercent,
-        status: resolveStatus(estimatedTotalKrw, totalBudgetKrw),
+        status,
         isMock: flight.isMock || lodging.isMock,
       };
 

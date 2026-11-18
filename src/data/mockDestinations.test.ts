@@ -24,9 +24,15 @@ describe('Japan destination catalog', () => {
       assert.ok(row!.activities.length > 0);
       assert.ok(row!.shopping.length > 0);
       assert.ok(row!.sampleItinerary.length > 0);
-      assert.ok(row!.localDailyPerPerson.activityKrw > 0);
-      assert.ok(row!.localDailyPerPerson.foodKrw > 0);
-      assert.ok(row!.localDailyPerPerson.shoppingKrw > 0);
+      assert.ok(row!.localDailyPerPerson, `missing local spend for ${id}`);
+      assert.ok(row!.localDailyPerPerson!.activityKrw > 0);
+      assert.ok(row!.localDailyPerPerson!.foodKrw > 0);
+      assert.ok(row!.localDailyPerPerson!.shoppingKrw > 0);
+      assert.equal(
+        'transportKrw' in (row!.localDailyPerPerson as object),
+        false,
+        'transport must not be invented on catalog daily',
+      );
       assert.ok(row!.priceFactor > 0);
     }
   });
@@ -42,9 +48,9 @@ describe('Japan destination catalog', () => {
     assert.equal(osaka.city, '오사카');
     assert.equal(osaka.airportCode, 'KIX');
     assert.equal(osaka.priceFactor, 0.95);
-    assert.equal(osaka.localDailyPerPerson.activityKrw, 25_000);
-    assert.equal(osaka.localDailyPerPerson.foodKrw, 35_000);
-    assert.equal(osaka.localDailyPerPerson.shoppingKrw, 20_000);
+    assert.equal(osaka.localDailyPerPerson!.activityKrw, 25_000);
+    assert.equal(osaka.localDailyPerPerson!.foodKrw, 35_000);
+    assert.equal(osaka.localDailyPerPerson!.shoppingKrw, 20_000);
     assert.equal(osaka.forcePriceUnknown, undefined);
   });
 
