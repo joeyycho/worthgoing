@@ -41,6 +41,13 @@ export function DestinationCard({ item, onSelect }: DestinationCardProps) {
               ? '항공 예상가(유연 일정)'
               : '항공 MOCK'}
         </p>
+        <p className="flight-mode-chip" data-mode={lodging.priceMode}>
+          {lodging.priceMode === 'live'
+            ? `숙소 시세 · ${new Date(lodging.searchedAt).toLocaleString('ko-KR')}`
+            : lodging.priceMode === 'indicative'
+              ? '숙소 예상가(유연 일정)'
+              : '숙소 MOCK'}
+        </p>
 
         <dl className="destination-card-meta">
           <div>

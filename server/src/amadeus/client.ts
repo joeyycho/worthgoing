@@ -4,6 +4,7 @@ import { getAmadeusAccessToken } from './auth.js';
 export async function amadeusGet<T>(
   env: ServerEnv,
   pathWithQuery: string,
+  timeoutMs = env.flightTimeoutMs,
 ): Promise<T> {
   const token = await getAmadeusAccessToken(env);
   const response = await fetch(`https://${env.amadeusHostname}${pathWithQuery}`, {
@@ -12,7 +13,7 @@ export async function amadeusGet<T>(
       Authorization: `Bearer ${token}`,
       Accept: 'application/vnd.amadeus+json',
     },
-    signal: AbortSignal.timeout(env.flightTimeoutMs),
+    signal: AbortSignal.timeout(timeoutMs),
   });
 
   if (!response.ok) {

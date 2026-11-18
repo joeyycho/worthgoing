@@ -1,6 +1,7 @@
 import type { AirportCode } from './travelSearch';
 
 export type FlightPriceMode = 'live' | 'indicative' | 'mock';
+export type AccommodationPriceMode = 'live' | 'indicative' | 'mock';
 
 export interface FlightQuoteQuery {
   originAirports: AirportCode[];
@@ -45,19 +46,42 @@ export interface AccommodationQuoteQuery {
   country: string;
   travelers: number;
   nights: number;
+  rooms?: number;
   checkInDate: string;
   checkOutDate: string;
+  cityCode?: string;
+  airportCode?: string;
   /** Internal catalog id (not a live hotel-API field) */
   destinationId?: string;
 }
 
+export interface AccommodationOfferStats {
+  min: number | null;
+  max: number | null;
+  avg: number | null;
+  offerCount: number;
+  currency: string;
+}
+
 export interface AccommodationQuote {
-  /** null means mock price unavailable — must not be shown as confirmed */
+  /** Total lodging for the stay (all rooms) — null means unavailable */
   totalStayKrw: number | null;
+  /** totalStayKrw / travelers when total is known */
+  perPersonStayKrw: number | null;
   propertyName: string;
   summary: string;
+  /**
+   * Verified external booking URL only. Empty when no public bookable deep link exists.
+   */
   bookingUrl: string;
-  isMock: true;
+  isMock: boolean;
+  priceMode: AccommodationPriceMode;
+  searchedAt: string;
+  nights: number;
+  rooms: number;
+  travelers: number;
+  stats: AccommodationOfferStats;
+  provider: 'amadeus' | 'mock';
 }
 
 export interface AccommodationProvider {

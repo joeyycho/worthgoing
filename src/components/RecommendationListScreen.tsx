@@ -51,9 +51,15 @@ export function RecommendationListScreen({
           확정 구매가가 아닙니다.
         </p>
       ) : null}
+      {items.some((item) => item.lodging.isMock) ? (
+        <p className="mock-banner" role="note">
+          <strong>숙소 MOCK</strong> · Amadeus 키가 없거나 Hotel API 실패 시 MockAccommodationProvider를
+          사용해요. 확정 구매가가 아닙니다.
+        </p>
+      ) : null}
       {flexible ? (
         <p className="status-note flexible-note" role="status">
-          유연 일정 모드 · 항공은 <strong>예상가(indicative)</strong>로 표시돼요.
+          유연 일정 모드 · 항공·숙소는 <strong>예상가(indicative)</strong>로 표시돼요.
         </p>
       ) : null}
 

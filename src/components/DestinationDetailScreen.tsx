@@ -226,21 +226,61 @@ export function DestinationDetailScreen({
       </section>
 
       <section className="detail-block">
-        <h2 className="section-title">숙소 (MOCK)</h2>
+        <h2 className="section-title">
+          숙소{' '}
+          {lodging.priceMode === 'mock'
+            ? '(MOCK)'
+            : lodging.priceMode === 'indicative'
+              ? '(예상가)'
+              : '(검색 시점)'}
+        </h2>
+        {lodging.isMock ? (
+          <p className="mock-banner" role="note">
+            <strong>MOCK</strong> · 숙소 요금은 예시이며 구매 확정가가 아닙니다.
+          </p>
+        ) : lodging.priceMode === 'indicative' ? (
+          <p className="status-note flexible-note" role="note">
+            유연 일정·참고용 예상가입니다. 실제 구매 전 체크인 날짜를 지정해 다시 검색하세요.
+          </p>
+        ) : (
+          <p className="helper-text">
+            검색 시각 {new Date(lodging.searchedAt).toLocaleString('ko-KR')} 기준 시세이며 변동될 수
+            있어요.
+          </p>
+        )}
         <p className="detail-strong">
-          {lodging.totalStayKrw == null ? '요금 확인 필요' : `${formatKrw(lodging.totalStayKrw)}원`}
+          {lodging.totalStayKrw == null
+            ? '요금 확인 필요'
+            : `총 ${formatKrw(lodging.totalStayKrw)}원`}
         </p>
+        {lodging.perPersonStayKrw != null ? (
+          <p className="helper-text">1인당 약 {formatKrw(lodging.perPersonStayKrw)}원</p>
+        ) : null}
+        {lodging.stats.offerCount > 0 ? (
+          <p className="helper-text">
+            최저 {lodging.stats.min == null ? '—' : `${formatKrw(lodging.stats.min)}원`} · 평균{' '}
+            {lodging.stats.avg == null ? '—' : `${formatKrw(lodging.stats.avg)}원`} · 최고{' '}
+            {lodging.stats.max == null ? '—' : `${formatKrw(lodging.stats.max)}원`} (
+            {lodging.stats.offerCount}건)
+          </p>
+        ) : null}
         <p className="helper-text">
           {lodging.propertyName} · {lodging.summary}
         </p>
-        <a
-          className="external-link"
-          href={lodging.bookingUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          목업 예약 링크 열기
-        </a>
+        {lodging.bookingUrl ? (
+          <a
+            className="external-link"
+            href={lodging.bookingUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            예약/상세 링크 열기
+          </a>
+        ) : (
+          <p className="helper-text">
+            공개 예약 딥링크가 없어 링크를 표시하지 않아요. (검색 시세만 참고)
+          </p>
+        )}
       </section>
 
       <CostBreakdownChart breakdown={item.breakdown} />
