@@ -804,7 +804,7 @@ describe('FlightSearchService SerpApi selection', () => {
     assert.equal(quote.isMock, false);
   });
 
-  it('Duffel when SerpApi unset', async () => {
+  it('Mock when SerpApi unset even if Duffel/Amadeus keys present', async () => {
     assert.equal(
       resolveActiveFlightProvider(
         baseEnv({
@@ -813,24 +813,38 @@ describe('FlightSearchService SerpApi selection', () => {
           duffelConfigured: true,
           duffelAccessToken: 'duffel_test',
           amadeusConfigured: true,
+          amadeusClientId: 'x',
+          amadeusClientSecret: 'y',
         }),
       ),
-      'duffel',
+      'mock',
     );
-  });
 
-  it('Amadeus when SerpApi + Duffel unset', async () => {
-    assert.equal(
-      resolveActiveFlightProvider(
-        baseEnv({
-          serpapiConfigured: false,
-          serpapiApiKey: null,
-          duffelConfigured: false,
-          amadeusConfigured: true,
-        }),
-      ),
-      'amadeus',
+    let duffelHits = 0;
+    let amadeusHits = 0;
+    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+      const href = String(url);
+      if (href.includes('duffel')) duffelHits += 1;
+      if (href.includes('amadeus')) amadeusHits += 1;
+      return mockJsonResponse(200, { data: [] });
+    });
+
+    const service = new FlightSearchService(
+      baseEnv({
+        serpapiConfigured: false,
+        serpapiApiKey: null,
+        duffelConfigured: true,
+        duffelAccessToken: 'duffel_test',
+        amadeusConfigured: true,
+        amadeusClientId: 'x',
+        amadeusClientSecret: 'y',
+      }),
+      null,
     );
+    const { quote } = await service.searchOne(datedQuery, null);
+    assert.equal(quote.provider, 'mock');
+    assert.equal(duffelHits, 0);
+    assert.equal(amadeusHits, 0);
   });
 
   it('Mock when no live providers configured', async () => {

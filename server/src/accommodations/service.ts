@@ -1,7 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ServerEnv } from '../env.js';
 import { TtlCache } from '../flights/cache.js';
-import { searchAmadeusAccommodations } from './amadeusProvider.js';
 import { defaultRoomCount } from './cityCodes.js';
 import { searchMockAccommodations } from './mockProvider.js';
 import { persistAccommodationSearch } from './persist.js';
@@ -13,14 +12,14 @@ import type {
   BatchAccommodationSearchResponse,
 } from './types.js';
 
-export type ActiveAccommodationProvider = 'serpapi' | 'amadeus' | 'mock';
+/** Active search path only — Amadeus modules remain in tree but are not selected. */
+export type ActiveAccommodationProvider = 'serpapi' | 'mock';
 
-/** SerpApi → Amadeus → Mock. Do not change flight selection here. */
+/** SerpApi → Mock. Duffel/Amadeus stay out of the normal search path. */
 export function resolveActiveAccommodationProvider(
   env: ServerEnv,
 ): ActiveAccommodationProvider {
   if (env.serpapiConfigured) return 'serpapi';
-  if (env.amadeusConfigured) return 'amadeus';
   return 'mock';
 }
 
@@ -72,14 +71,6 @@ export class AccommodationSearchService {
         quote = searchMockAccommodations(query);
         quote.summary = `${quote.summary} · SerpApi 실패 폴백`;
       }
-    } else if (active === 'amadeus') {
-      try {
-        quote = await searchAmadeusAccommodations(this.env, query);
-      } catch (error) {
-        console.warn('Amadeus hotel search failed; using MOCK', error);
-        quote = searchMockAccommodations(query);
-        quote.summary = `${quote.summary} · Amadeus 실패 폴백`;
-      }
     } else {
       quote = searchMockAccommodations(query);
     }
@@ -126,13 +117,11 @@ export class AccommodationSearchService {
       return a.totalStayKrw - b.totalStayKrw;
     });
 
-    const provider: BatchAccommodationSearchResponse['provider'] = results.some(
+    const provider: ActiveAccommodationProvider = results.some(
       (item) => item.provider === 'serpapi',
     )
       ? 'serpapi'
-      : results.some((item) => item.provider === 'amadeus')
-        ? 'amadeus'
-        : 'mock';
+      : 'mock';
 
     return {
       searchedAt,

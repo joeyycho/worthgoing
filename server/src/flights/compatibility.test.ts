@@ -96,7 +96,7 @@ function stayQuote(overrides: Partial<AccommodationQuoteResult> = {}): Accommoda
 }
 
 describe('Step 5 compatibility — types / persist / cache / health', () => {
-  it('provider unions: active resolvers include serpapi and legacy fallbacks', () => {
+  it('provider unions: active resolvers are serpapi or mock only', () => {
     assert.equal(resolveActiveFlightProvider(baseEnv()), 'serpapi');
     assert.equal(resolveActiveAccommodationProvider(baseEnv()), 'serpapi');
     assert.equal(
@@ -108,7 +108,7 @@ describe('Step 5 compatibility — types / persist / cache / health', () => {
           duffelAccessToken: 'duffel_test',
         }),
       ),
-      'duffel',
+      'mock',
     );
     assert.equal(
       resolveActiveFlightProvider(
@@ -120,7 +120,7 @@ describe('Step 5 compatibility — types / persist / cache / health', () => {
           amadeusClientSecret: 'y',
         }),
       ),
-      'amadeus',
+      'mock',
     );
     assert.equal(
       resolveActiveAccommodationProvider(
@@ -132,7 +132,7 @@ describe('Step 5 compatibility — types / persist / cache / health', () => {
           amadeusClientSecret: 'y',
         }),
       ),
-      'amadeus',
+      'mock',
     );
     assert.equal(
       resolveActiveFlightProvider(
@@ -340,8 +340,10 @@ describe('Step 5 compatibility — types / persist / cache / health', () => {
       amadeusClientSecret: 'y',
     });
     assert.equal(unset.serpapiConfigured, false);
-    assert.equal(resolveActiveFlightProvider(unset), 'duffel');
-    assert.equal(resolveActiveAccommodationProvider(unset), 'amadeus');
+    assert.equal(unset.duffelConfigured, true);
+    assert.equal(unset.amadeusConfigured, true);
+    assert.equal(resolveActiveFlightProvider(unset), 'mock');
+    assert.equal(resolveActiveAccommodationProvider(unset), 'mock');
   });
 
   it('legacy Duffel / Amadeus / Mock quotes remain readable shapes', () => {

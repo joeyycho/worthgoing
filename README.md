@@ -25,9 +25,9 @@ npm run dev
 
 Supabase를 쓰려면 `server/.env`에 `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`를 넣고, 마이그레이션을 적용하세요. 자세한 방법은 `supabase/README.md`.
 
-SerpApi (현재 기본 live 경로): `server/.env`에 `SERPAPI_API_KEY`를 넣으면 항공·숙소 검색이 **SerpApi Google Flights / Hotels**를 우선 사용합니다. 키가 없거나 API 실패 시 Mock으로 폴백합니다. Vite/`VITE_*`에 비밀키를 넣지 마세요. `/health`의 `serpapiConfigured`와 `activeFlightProvider` / `activeAccommodationProvider`는 서로 다른 신호입니다.
+SerpApi (기본 live 경로): `server/.env`에 `SERPAPI_API_KEY`를 넣으면 항공·숙소 검색이 **SerpApi Google Flights / Hotels**를 사용합니다. 키가 없거나 API 실패 시 Mock으로 폴백합니다. Vite/`VITE_*`에 비밀키를 넣지 마세요. `/health`의 `serpapiConfigured`와 `activeFlightProvider` / `activeAccommodationProvider`는 서로 다른 신호입니다 (active는 `serpapi` | `mock`만).
 
-Duffel / Amadeus (레거시 폴백, 코드 유지): SerpApi 미설정 시 항공은 Duffel → Amadeus → Mock, 숙소는 Amadeus → Mock. `DUFFEL_ACCESS_TOKEN`, `AMADEUS_CLIENT_ID` / `AMADEUS_CLIENT_SECRET`은 서버 전용입니다.
+Duffel / Amadeus (코드·env 유지, 검색 경로 비활성): `DUFFEL_ACCESS_TOKEN`, `AMADEUS_CLIENT_ID` / `AMADEUS_CLIENT_SECRET`은 서버 전용이며 `/health`의 `duffelConfigured` / `amadeusConfigured`로 존재만 표시합니다. 일반 검색 서비스는 호출하지 않습니다.
 
 ## 빌드 / 패키징 / 콘솔 테스트
 
