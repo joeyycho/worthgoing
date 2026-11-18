@@ -30,18 +30,18 @@ Amadeus 항공·숙소(stage 6–7): `server/.env`에 `AMADEUS_CLIENT_ID` / `AMA
 ## 빌드 / 패키징 / 콘솔 테스트
 
 ```bash
-npm run build         # tsc + vite build + ait build → galmanhae.ait
+npm run build         # tsc + vite build + ait build → galman-hae.ait
 npm run ait:verify    # .ait 존재·크기 확인
 npm run ait:package   # build + verify
 npm run check         # lint + server typecheck + ait:package
 npm run deploy        # ait deploy (콘솔 API 키 / 워크스페이스 필요)
 ```
 
-`apps-in-toss.config.ts`의 `appName`은 **`galmanhae`** 입니다. [Apps in Toss 콘솔](https://apps-in-toss.toss.im/)에 등록한 앱 이름과 동일해야 배포·QR 테스트가 됩니다.
+`apps-in-toss.config.ts`의 `appName`은 **`galman-hae`** 입니다 (콘솔 앱 ID). 제품 표시명은 계속 **갈만해**. [Apps in Toss 콘솔](https://apps-in-toss.toss.im/)에 등록한 앱 이름과 동일해야 배포·QR 테스트가 됩니다.
 
 공식 테스트 흐름 (요약 — 상세는 개발자센터):
 
-1. `npm run build`로 `galmanhae.ait` 생성  
+1. `npm run build`로 `galman-hae.ait` 생성  
 2. 콘솔에 `.ait` 업로드 후 **Test** QR을 토스 앱에서 스캔 (또는 `npx ait deploy` / `npm run deploy`)  
 3. SDK 3.x는 로컬에서 **AIT Devtools**로 브라우저 미리보기; 구버전(2.x) 전용 샌드박스 APK/IPA와는 다름  
 

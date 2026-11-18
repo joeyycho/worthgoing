@@ -13,7 +13,7 @@ import { defineConfig } from '@apps-in-toss/web-framework/config';
  * - https://developers-apps-in-toss.toss.im/documentation/api-and-sdk-en/common/screen/safe-area
  */
 export default defineConfig({
-  appName: 'galmanhae',
+  appName: 'galman-hae',
   // No extra device permissions requested for current features.
   permissions: [],
   webBundleDir: 'dist',

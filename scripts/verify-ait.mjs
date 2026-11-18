@@ -7,7 +7,7 @@
 import { existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const appName = 'galmanhae';
+const appName = 'galman-hae';
 const aitPath = resolve(process.cwd(), `${appName}.ait`);
 
 if (!existsSync(aitPath)) {

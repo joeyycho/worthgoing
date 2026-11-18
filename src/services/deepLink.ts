@@ -8,7 +8,7 @@ export type DeepLinkTarget =
 
 function parseShareFromUrlLike(raw: string): { shareId: string; payload: string | null } | null {
   try {
-    // Support hash (#/share/id?s=...), path (/share/id), and intoss://galmanhae/share/id?s=...
+    // Support hash (#/share/id?s=...), path (/share/id), and intoss://galman-hae/share/id?s=...
     let path = raw;
     let search = '';
 
