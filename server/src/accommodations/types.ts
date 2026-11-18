@@ -51,7 +51,7 @@ export interface AccommodationQuoteResult {
   rooms: number;
   travelers: number;
   stats: AccommodationOfferStats;
-  provider: 'amadeus' | 'mock';
+  provider: 'serpapi' | 'amadeus' | 'mock';
   destinationId?: string;
   city: string;
   country: string;
@@ -73,7 +73,7 @@ export interface BatchAccommodationSearchResponse {
   travelers: number;
   nights: number;
   rooms: number;
-  provider: 'amadeus' | 'mock';
+  provider: 'serpapi' | 'amadeus' | 'mock';
   results: AccommodationQuoteResult[];
   persisted: boolean;
 }

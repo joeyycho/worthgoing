@@ -5,12 +5,24 @@ import { searchAmadeusAccommodations } from './amadeusProvider.js';
 import { defaultRoomCount } from './cityCodes.js';
 import { searchMockAccommodations } from './mockProvider.js';
 import { persistAccommodationSearch } from './persist.js';
+import { searchSerpapiAccommodations } from './serpapiProvider.js';
 import type {
   AccommodationQuoteResult,
   AccommodationSearchRequest,
   BatchAccommodationSearchRequest,
   BatchAccommodationSearchResponse,
 } from './types.js';
+
+export type ActiveAccommodationProvider = 'serpapi' | 'amadeus' | 'mock';
+
+/** SerpApi → Amadeus → Mock. Do not change flight selection here. */
+export function resolveActiveAccommodationProvider(
+  env: ServerEnv,
+): ActiveAccommodationProvider {
+  if (env.serpapiConfigured) return 'serpapi';
+  if (env.amadeusConfigured) return 'amadeus';
+  return 'mock';
+}
 
 export class AccommodationSearchService {
   private readonly cache: TtlCache<AccommodationQuoteResult>;
@@ -35,7 +47,7 @@ export class AccommodationSearchService {
       rooms,
       query.checkInDate || 'flex',
       query.checkOutDate || 'flex',
-      this.env.amadeusConfigured ? 'amadeus' : 'mock',
+      resolveActiveAccommodationProvider(this.env),
     ].join('|');
   }
 
@@ -49,8 +61,18 @@ export class AccommodationSearchService {
       return { quote: cached, persisted: false };
     }
 
+    const active = resolveActiveAccommodationProvider(this.env);
     let quote: AccommodationQuoteResult;
-    if (this.env.amadeusConfigured) {
+
+    if (active === 'serpapi') {
+      try {
+        quote = await searchSerpapiAccommodations(this.env, query);
+      } catch (error) {
+        console.warn('SerpApi hotel search failed; using MOCK', error);
+        quote = searchMockAccommodations(query);
+        quote.summary = `${quote.summary} · SerpApi 실패 폴백`;
+      }
+    } else if (active === 'amadeus') {
       try {
         quote = await searchAmadeusAccommodations(this.env, query);
       } catch (error) {
@@ -104,7 +126,13 @@ export class AccommodationSearchService {
       return a.totalStayKrw - b.totalStayKrw;
     });
 
-    const provider = results.some((item) => item.provider === 'amadeus') ? 'amadeus' : 'mock';
+    const provider: BatchAccommodationSearchResponse['provider'] = results.some(
+      (item) => item.provider === 'serpapi',
+    )
+      ? 'serpapi'
+      : results.some((item) => item.provider === 'amadeus')
+        ? 'amadeus'
+        : 'mock';
 
     return {
       searchedAt,
