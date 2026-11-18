@@ -1,6 +1,7 @@
 import { BUDGET_STATUS_LABEL } from '../constants/recommendation';
 import { formatKrw } from '../constants/travelSearch';
 import type { DestinationRecommendation } from '../types/recommendation';
+import { flightFareAmountLabel } from '../utils/flightFareDisplay';
 
 interface DestinationCardProps {
   item: DestinationRecommendation;
@@ -64,7 +65,7 @@ export function DestinationCard({ item, onSelect }: DestinationCardProps) {
         <dl className="destination-card-meta">
           <div>
             <dt>항공</dt>
-            <dd>{flight.totalFareKrw == null ? '확인 필요' : `${formatKrw(flight.totalFareKrw)}원`}</dd>
+            <dd>{flightFareAmountLabel(flight.totalFareKrw)}</dd>
           </div>
           <div>
             <dt>숙소</dt>
