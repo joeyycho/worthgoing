@@ -10,10 +10,12 @@ import { registerAccommodationRoutes } from './routes/accommodations.js';
 import { registerFlightRoutes } from './routes/flights.js';
 import { registerSavedTripRoutes } from './routes/savedTrips.js';
 import { registerSharedTripRoutes } from './routes/sharedTrips.js';
+import { describeSerpapiClient } from './serpapi/client.js';
 import { createServiceClient } from './supabase.js';
 
 const env = loadServerEnv();
 const duffelClientInfo = describeDuffelClient(env);
+const serpapiClientInfo = describeSerpapiClient(env);
 const app = express();
 
 app.use(
@@ -63,17 +65,28 @@ app.get('/health', (_req, res) => {
     supabaseConfigured: env.supabaseConfigured,
     amadeusConfigured: env.amadeusConfigured,
     duffelConfigured: env.duffelConfigured,
+    serpapiConfigured: env.serpapiConfigured,
     duffel: {
       configured: duffelClientInfo.configured,
       baseUrl: duffelClientInfo.baseUrl,
       apiVersion: duffelClientInfo.apiVersion,
       tokenPrefix: duffelClientInfo.tokenPrefix,
     },
-    // Flights: Duffel → Amadeus → mock (never both live providers). Stays still Amadeus until step 4.
+    serpapi: {
+      configured: serpapiClientInfo.configured,
+      baseUrl: serpapiClientInfo.baseUrl,
+      gl: serpapiClientInfo.gl,
+      hl: serpapiClientInfo.hl,
+      currency: serpapiClientInfo.currency,
+    },
+    // Flights: Duffel → Amadeus → mock (SerpApi providers land in later steps). Stays still Amadeus until SerpApi hotels step.
     flightProvider: resolveActiveFlightProvider(env),
     accommodationProvider: env.amadeusConfigured ? 'amadeus' : 'mock',
     mode:
-      env.supabaseConfigured || env.amadeusConfigured || env.duffelConfigured
+      env.supabaseConfigured ||
+      env.amadeusConfigured ||
+      env.duffelConfigured ||
+      env.serpapiConfigured
         ? 'partial-or-full'
         : 'offline-mock',
   });
@@ -81,6 +94,6 @@ app.get('/health', (_req, res) => {
 
 app.listen(env.port, () => {
   console.log(
-    `[galmanhae-server] :${env.port} supabase=${env.supabaseConfigured} amadeus=${env.amadeusConfigured} duffel=${env.duffelConfigured} flights=${resolveActiveFlightProvider(env)}`,
+    `[galmanhae-server] :${env.port} supabase=${env.supabaseConfigured} amadeus=${env.amadeusConfigured} duffel=${env.duffelConfigured} serpapi=${env.serpapiConfigured} flights=${resolveActiveFlightProvider(env)}`,
   );
 });

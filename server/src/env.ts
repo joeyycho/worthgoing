@@ -17,6 +17,9 @@ export function loadServerEnv() {
   const duffelAccessToken = process.env.DUFFEL_ACCESS_TOKEN?.trim() || null;
   const duffelConfigured = Boolean(duffelAccessToken);
 
+  const serpapiApiKey = process.env.SERPAPI_API_KEY?.trim() || null;
+  const serpapiConfigured = Boolean(serpapiApiKey);
+
   /**
    * Comma-separated allowlist, or `*` for any origin.
    * For Apps in Toss QR / live (SDK 3.10), register the mini-app origins from
@@ -74,6 +77,23 @@ export function loadServerEnv() {
     duffelBaseUrl: process.env.DUFFEL_BASE_URL ?? 'https://api.duffel.com',
     duffelApiVersion: process.env.DUFFEL_API_VERSION ?? 'v2',
     duffelTimeoutMs: Number(process.env.DUFFEL_TIMEOUT_MS ?? 12_000),
+
+    /**
+     * SerpApi API key (server-only). Used for Google Flights / Google Hotels search
+     * in later migration steps. Never put SERPAPI_API_KEY in VITE_*.
+     * https://serpapi.com/manage-api-key
+     * Missing key does not block server startup — providers stay on Duffel/Amadeus/mock.
+     */
+    serpapiConfigured,
+    serpapiApiKey: serpapiConfigured
+      ? required('SERPAPI_API_KEY', serpapiApiKey ?? undefined)
+      : null,
+    serpapiBaseUrl: process.env.SERPAPI_BASE_URL ?? 'https://serpapi.com',
+    serpapiTimeoutMs: Number(process.env.SERPAPI_TIMEOUT_MS ?? 15_000),
+    /** Google locale / language / currency defaults for SerpApi engines (갈만해). */
+    serpapiGl: process.env.SERPAPI_GL ?? 'kr',
+    serpapiHl: process.env.SERPAPI_HL ?? 'ko',
+    serpapiCurrency: process.env.SERPAPI_CURRENCY ?? 'KRW',
 
     flightCacheTtlMs: Number(process.env.FLIGHT_CACHE_TTL_MS ?? 15 * 60 * 1000),
     flightTimeoutMs: Number(process.env.FLIGHT_TIMEOUT_MS ?? 12_000),
