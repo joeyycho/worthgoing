@@ -63,6 +63,9 @@ const accommodationRateLimiter = new FixedWindowRateLimiter(
 registerAccommodationRoutes(app, accommodationService, accommodationRateLimiter);
 
 app.get('/health', (_req, res) => {
+  // serpapiConfigured = key present; active* = resolved search path (may differ when unset).
+  const activeFlightProvider = resolveActiveFlightProvider(env);
+  const activeAccommodationProvider = resolveActiveAccommodationProvider(env);
   res.json({
     ok: true,
     supabaseConfigured: env.supabaseConfigured,
@@ -83,8 +86,10 @@ app.get('/health', (_req, res) => {
       currency: serpapiClientInfo.currency,
     },
     // Flights: SerpApi → Duffel → Amadeus → mock. Stays: SerpApi → Amadeus → mock.
-    flightProvider: resolveActiveFlightProvider(env),
-    accommodationProvider: resolveActiveAccommodationProvider(env),
+    flightProvider: activeFlightProvider,
+    accommodationProvider: activeAccommodationProvider,
+    activeFlightProvider,
+    activeAccommodationProvider,
     mode:
       env.supabaseConfigured ||
       env.amadeusConfigured ||

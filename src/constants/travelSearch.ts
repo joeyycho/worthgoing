@@ -31,6 +31,10 @@ export const INITIAL_TRAVEL_SEARCH: TravelSearchFormState = {
   returnDate: '',
 };
 
+/** Format KRW for UI. Invalid amounts must not reach here as “0원”. */
 export function formatKrw(amount: number): string {
-  return new Intl.NumberFormat('ko-KR').format(amount);
+  if (!Number.isFinite(amount)) {
+    return '—';
+  }
+  return new Intl.NumberFormat('ko-KR').format(Math.round(amount));
 }

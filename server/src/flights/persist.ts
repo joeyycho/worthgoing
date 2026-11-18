@@ -1,9 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { sanitizeKrwAmount } from './money.js';
 import type { FlightQuoteResult, FlightSearchRequest } from './types.js';
 
 /**
  * Best-effort persist into stage-5 flight_searches / flight_offers.
  * Never invents a successful write when Supabase is unavailable.
+ * `provider` is text — 'serpapi' | 'duffel' | 'amadeus' | 'mock' all fit without migration.
+ * Null fares are allowed; invalid amounts are stored as null (never NaN).
  */
 export async function persistFlightSearch(
   supabase: SupabaseClient | null,
@@ -39,9 +42,9 @@ export async function persistFlightSearch(
     const { error: offerError } = await supabase.from('flight_offers').insert({
       search_id: search.id,
       carrier: quote.carrier,
-      total_fare_krw: quote.totalFareKrw,
+      total_fare_krw: sanitizeKrwAmount(quote.totalFareKrw),
       summary: quote.summary,
-      booking_url: quote.bookingUrl,
+      booking_url: quote.bookingUrl || '',
       is_mock: quote.isMock,
       raw: {
         priceMode: quote.priceMode,

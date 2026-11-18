@@ -33,6 +33,15 @@ function ListBlock({ title, items }: { title: string; items: string[] }) {
   );
 }
 
+/** Surface tax / nightly qualification fragments already present in stay summary. */
+function stayPriceQualification(summary: string): string | null {
+  const parts = summary
+    .split('·')
+    .map((part) => part.trim())
+    .filter((part) => /세금|수수료|1박×/.test(part));
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
+
 export function DestinationDetailScreen({
   item,
   form,
@@ -43,6 +52,7 @@ export function DestinationDetailScreen({
 }: DestinationDetailScreenProps) {
   const { destination, flight, lodging, status, estimatedTotalKrw, remainingKrw, remainingPercent } =
     item;
+  const lodgingQualify = stayPriceQualification(lodging.summary);
   const [saveNote, setSaveNote] = useState<string | null>(null);
   const [shareNote, setShareNote] = useState<string | null>(null);
   const [shareLink, setShareLink] = useState<string | null>(null);
@@ -184,15 +194,21 @@ export function DestinationDetailScreen({
       <section className="detail-block">
         <h2 className="section-title">
           항공{' '}
-          {flight.priceMode === 'mock'
-            ? '(MOCK)'
-            : flight.priceMode === 'indicative'
-              ? '(예상가)'
-              : '(검색 시점)'}
+          {flight.isMock
+            ? '(예시)'
+            : flight.totalFareKrw == null
+              ? '(확인불가)'
+              : flight.priceMode === 'indicative'
+                ? '(예상)'
+                : '(실시간)'}
         </h2>
         {flight.isMock ? (
           <p className="mock-banner" role="note">
-            <strong>MOCK</strong> · 항공 요금은 예시이며 구매 확정가가 아닙니다.
+            <strong>예시</strong> · 항공 요금은 예시이며 구매 확정가가 아닙니다.
+          </p>
+        ) : flight.totalFareKrw == null ? (
+          <p className="status-note" role="note">
+            <strong>확인불가</strong> · 검색은 됐지만 확정 가능한 왕복 요금이 없어요. 빈 결과 ≠ 오류.
           </p>
         ) : flight.priceMode === 'indicative' ? (
           <p className="status-note flexible-note" role="note">
@@ -200,12 +216,12 @@ export function DestinationDetailScreen({
           </p>
         ) : (
           <p className="helper-text">
-            검색 시각 {new Date(flight.searchedAt).toLocaleString('ko-KR')} 기준 시세이며 변동될 수
-            있어요.
+            검색 시각 {new Date(flight.searchedAt).toLocaleString('ko-KR')} 기준 실시간 시세이며
+            변동될 수 있어요.
           </p>
         )}
         <p className="detail-strong">
-          {flight.totalFareKrw == null ? '요금 확인 필요' : `${formatKrw(flight.totalFareKrw)}원`}
+          {flight.totalFareKrw == null ? '요금 확인불가' : `${formatKrw(flight.totalFareKrw)}원`}
         </p>
         {flight.stats.offerCount > 0 ? (
           <p className="helper-text">
@@ -220,23 +236,38 @@ export function DestinationDetailScreen({
           {flight.roundTrip ? ' · 왕복' : ''}
         </p>
         {flight.baggageNotes ? <p className="helper-text">{flight.baggageNotes}</p> : null}
-        <a className="external-link" href={flight.bookingUrl} target="_blank" rel="noopener noreferrer">
-          예약/상세 링크 열기
-        </a>
+        {flight.bookingUrl ? (
+          <a
+            className="external-link"
+            href={flight.bookingUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            예약/상세 링크 열기
+          </a>
+        ) : (
+          <p className="helper-text">검증된 예약 링크가 없어 표시하지 않아요.</p>
+        )}
       </section>
 
       <section className="detail-block">
         <h2 className="section-title">
           숙소{' '}
-          {lodging.priceMode === 'mock'
-            ? '(MOCK)'
-            : lodging.priceMode === 'indicative'
-              ? '(예상가)'
-              : '(검색 시점)'}
+          {lodging.isMock
+            ? '(예시)'
+            : lodging.totalStayKrw == null
+              ? '(확인불가)'
+              : lodging.priceMode === 'indicative'
+                ? '(예상)'
+                : '(실시간)'}
         </h2>
         {lodging.isMock ? (
           <p className="mock-banner" role="note">
-            <strong>MOCK</strong> · 숙소 요금은 예시이며 구매 확정가가 아닙니다.
+            <strong>예시</strong> · 숙소 요금은 예시이며 구매 확정가가 아닙니다.
+          </p>
+        ) : lodging.totalStayKrw == null ? (
+          <p className="status-note" role="note">
+            <strong>확인불가</strong> · 검색은 됐지만 확정 가능한 숙박 총액이 없어요. 빈 결과 ≠ 오류.
           </p>
         ) : lodging.priceMode === 'indicative' ? (
           <p className="status-note flexible-note" role="note">
@@ -244,17 +275,24 @@ export function DestinationDetailScreen({
           </p>
         ) : (
           <p className="helper-text">
-            검색 시각 {new Date(lodging.searchedAt).toLocaleString('ko-KR')} 기준 시세이며 변동될 수
-            있어요.
+            검색 시각 {new Date(lodging.searchedAt).toLocaleString('ko-KR')} 기준 실시간 시세이며
+            변동될 수 있어요.
           </p>
         )}
         <p className="detail-strong">
           {lodging.totalStayKrw == null
-            ? '요금 확인 필요'
+            ? '요금 확인불가'
             : `총 ${formatKrw(lodging.totalStayKrw)}원`}
         </p>
         {lodging.perPersonStayKrw != null ? (
           <p className="helper-text">1인당 약 {formatKrw(lodging.perPersonStayKrw)}원</p>
+        ) : null}
+        {lodging.nights > 0 && lodging.totalStayKrw != null ? (
+          <p className="helper-text">
+            {lodging.nights}박 총액 · 1박 환산 약{' '}
+            {formatKrw(Math.round(lodging.totalStayKrw / lodging.nights))}원
+            {lodgingQualify ? ` · ${lodgingQualify}` : ''}
+          </p>
         ) : null}
         {lodging.stats.offerCount > 0 ? (
           <p className="helper-text">
