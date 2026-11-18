@@ -12,6 +12,10 @@ import {
   formatKrw,
 } from '../constants/travelSearch';
 import type { AirportCode, TravelSearchFormState } from '../types/travelSearch';
+import {
+  SEARCH_FORM_CTA_HELPER,
+  SEARCH_FORM_CTA_LABEL,
+} from '../utils/priceProvenance';
 
 type FieldErrorKey = 'tripLengthDays' | 'departureAirports' | 'dateRange';
 
@@ -254,7 +258,7 @@ export function TravelSearchScreen({ initialForm, onSearch }: TravelSearchScreen
             별도 확인이 필요해요.
           </p>
         ) : (
-          <p className="helper-text">선택한 기간을 기준으로 목업 조건을 맞춰 볼게요.</p>
+          <p className="helper-text">선택한 기간을 기준으로 항공·숙박 가격을 찾아 볼게요.</p>
         )}
         {errors.dateRange ? (
           <p className="field-error" role="alert">
@@ -265,9 +269,9 @@ export function TravelSearchScreen({ initialForm, onSearch }: TravelSearchScreen
 
       <div className="cta-wrap">
         <button type="submit" className="primary-cta">
-          조건으로 여행지 찾기
+          {SEARCH_FORM_CTA_LABEL}
         </button>
-        <p className="helper-text cta-helper">결과는 MOCK 예시이며 실시간 검색이 아닙니다.</p>
+        <p className="helper-text cta-helper">{SEARCH_FORM_CTA_HELPER}</p>
       </div>
     </form>
   );

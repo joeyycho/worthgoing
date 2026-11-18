@@ -2,6 +2,10 @@ import { BUDGET_STATUS_LABEL } from '../constants/recommendation';
 import { formatKrw } from '../constants/travelSearch';
 import type { DestinationRecommendation } from '../types/recommendation';
 import { flightFareAmountLabel } from '../utils/flightFareDisplay';
+import {
+  classifyQuoteProvenance,
+  formatSearchQuoteProvenanceChip,
+} from '../utils/priceProvenance';
 
 interface DestinationCardProps {
   item: DestinationRecommendation;
@@ -27,6 +31,8 @@ function tripTotalLabel(item: DestinationRecommendation): string {
 export function DestinationCard({ item, onSelect }: DestinationCardProps) {
   const { destination, status, remainingPercent, flight, lodging, searchCost, localSpendTotalKrw } =
     item;
+  const flightProvenance = classifyQuoteProvenance(flight);
+  const lodgingProvenance = classifyQuoteProvenance(lodging);
 
   return (
     <button
@@ -54,31 +60,17 @@ export function DestinationCard({ item, onSelect }: DestinationCardProps) {
           {tripTotalLabel(item)}
         </p>
 
-        <p
-          className="flight-mode-chip"
-          data-mode={flight.isMock ? 'mock' : flight.totalFareKrw == null ? 'unknown' : flight.priceMode}
-        >
-          {flight.isMock
-            ? '항공 예시'
-            : flight.totalFareKrw == null
-              ? '항공 확인불가'
-              : flight.priceMode === 'indicative'
-                ? '항공 예상'
-                : `항공 실시간 · ${new Date(flight.searchedAt).toLocaleString('ko-KR')}`}
+        <p className="flight-mode-chip" data-mode={flightProvenance}>
+          {formatSearchQuoteProvenanceChip(flight, 'flight')}
+          {flightProvenance === 'live'
+            ? ` · ${new Date(flight.searchedAt).toLocaleString('ko-KR')}`
+            : ''}
         </p>
-        <p
-          className="flight-mode-chip"
-          data-mode={
-            lodging.isMock ? 'mock' : lodging.totalStayKrw == null ? 'unknown' : lodging.priceMode
-          }
-        >
-          {lodging.isMock
-            ? '숙소 예시'
-            : lodging.totalStayKrw == null
-              ? '숙소 확인불가'
-              : lodging.priceMode === 'indicative'
-                ? '숙소 예상'
-                : `숙소 실시간 · ${new Date(lodging.searchedAt).toLocaleString('ko-KR')}`}
+        <p className="flight-mode-chip" data-mode={lodgingProvenance}>
+          {formatSearchQuoteProvenanceChip(lodging, 'stay')}
+          {lodgingProvenance === 'live'
+            ? ` · ${new Date(lodging.searchedAt).toLocaleString('ko-KR')}`
+            : ''}
         </p>
         <p className="flight-mode-chip" data-mode={localSpendTotalKrw == null ? 'unknown' : 'indicative'}>
           {localSpendTotalKrw == null

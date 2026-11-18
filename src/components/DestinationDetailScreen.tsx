@@ -11,6 +11,11 @@ import {
   FLIGHT_FARE_UNAVAILABLE,
   flightFareAmountLabel,
 } from '../utils/flightFareDisplay';
+import {
+  classifyQuoteProvenance,
+  formatSearchQuoteProvenanceParen,
+  quoteIsMockProvenance,
+} from '../utils/priceProvenance';
 import { CostBreakdownChart } from './CostBreakdownChart';
 import { MockBanner } from './MockBanner';
 import { PriceAsOfNote } from './PriceAsOfNote';
@@ -232,31 +237,28 @@ export function DestinationDetailScreen({
 
       <section className="detail-block">
         <h2 className="section-title">
-          항공{' '}
-          {flight.isMock
-            ? '(예시)'
-            : flight.totalFareKrw == null
-              ? '(확인불가)'
-              : flight.priceMode === 'indicative'
-                ? '(예상)'
-                : '(실시간)'}
+          항공 {formatSearchQuoteProvenanceParen(flight)}
         </h2>
-        {flight.isMock ? (
+        {quoteIsMockProvenance(flight) ? (
           <p className="mock-banner" role="note">
-            <strong>예시</strong> · 항공 요금은 예시이며 구매 확정가가 아닙니다.
+            <strong>예시 가격</strong> · 항공 요금은 예시이며 구매 확정가가 아닙니다.
+          </p>
+        ) : classifyQuoteProvenance(flight) === 'unknown' ? (
+          <p className="status-note" role="note">
+            <strong>가격 출처 확인 불가</strong> · 항공 가격 출처를 확인할 수 없어요.
           </p>
         ) : flight.totalFareKrw == null ? (
           <p className="status-note" role="note">
             <strong>확인불가</strong> · 검색은 됐지만 확정 가능한 왕복 요금이 없어요. 빈 결과 ≠ 오류.
           </p>
-        ) : flight.priceMode === 'indicative' ? (
+        ) : classifyQuoteProvenance(flight) === 'indicative' ? (
           <p className="status-note flexible-note" role="note">
-            유연 일정·참고용 예상가입니다. 실제 구매 전 날짜를 지정해 다시 검색하세요.
+            유연 일정·참고용 예상 가격입니다. 실제 구매 전 날짜를 지정해 다시 검색하세요.
           </p>
         ) : (
           <p className="helper-text" role="note">
             {FLIGHT_FARE_PRESENT_DISCLAIMER} 검색 시각{' '}
-            {new Date(flight.searchedAt).toLocaleString('ko-KR')} 기준.
+            {new Date(flight.searchedAt).toLocaleString('ko-KR')} 기준 실시간 검색 결과입니다.
           </p>
         )}
         <p className="detail-strong">
@@ -293,31 +295,28 @@ export function DestinationDetailScreen({
 
       <section className="detail-block">
         <h2 className="section-title">
-          숙소{' '}
-          {lodging.isMock
-            ? '(예시)'
-            : lodging.totalStayKrw == null
-              ? '(확인불가)'
-              : lodging.priceMode === 'indicative'
-                ? '(예상)'
-                : '(실시간)'}
+          숙소 {formatSearchQuoteProvenanceParen(lodging)}
         </h2>
-        {lodging.isMock ? (
+        {quoteIsMockProvenance(lodging) ? (
           <p className="mock-banner" role="note">
-            <strong>예시</strong> · 숙소 요금은 예시이며 구매 확정가가 아닙니다.
+            <strong>예시 가격</strong> · 숙소 요금은 예시이며 구매 확정가가 아닙니다.
+          </p>
+        ) : classifyQuoteProvenance(lodging) === 'unknown' ? (
+          <p className="status-note" role="note">
+            <strong>가격 출처 확인 불가</strong> · 숙소 가격 출처를 확인할 수 없어요.
           </p>
         ) : lodging.totalStayKrw == null ? (
           <p className="status-note" role="note">
             <strong>확인불가</strong> · 검색은 됐지만 확정 가능한 숙박 총액이 없어요. 빈 결과 ≠ 오류.
           </p>
-        ) : lodging.priceMode === 'indicative' ? (
+        ) : classifyQuoteProvenance(lodging) === 'indicative' ? (
           <p className="status-note flexible-note" role="note">
-            유연 일정·참고용 예상가입니다. 실제 구매 전 체크인 날짜를 지정해 다시 검색하세요.
+            유연 일정·참고용 예상 가격입니다. 실제 구매 전 체크인 날짜를 지정해 다시 검색하세요.
           </p>
         ) : (
           <p className="helper-text">
-            검색 시각 {new Date(lodging.searchedAt).toLocaleString('ko-KR')} 기준 실시간 시세이며
-            변동될 수 있어요.
+            검색 시각 {new Date(lodging.searchedAt).toLocaleString('ko-KR')} 기준 실시간 검색
+            결과이며 변동될 수 있어요.
           </p>
         )}
         <p className="detail-strong">

@@ -1,9 +1,10 @@
 /**
- * Saved / shared price provenance helpers.
+ * Price provenance helpers for saved/shared trips and live search results.
  *
  * Classify only from real `isMock` / `priceMode` fields. Never invent provenance
  * for legacy snapshots, never treat missing as mock, and never label LIVE when
- * the fields are incomplete or contradictory.
+ * the fields are incomplete or contradictory. Search-form CTA must not claim
+ * LIVE or MOCK before results exist.
  */
 
 export type PriceProvenanceKind = 'live' | 'indicative' | 'mock' | 'unknown';
@@ -22,6 +23,38 @@ export const PRICE_PROVENANCE_LABEL: Record<PriceProvenanceKind, string> = {
   mock: '예시 가격',
   unknown: '출처 확인 불가',
 };
+
+/** Post-search result chips / detail headings (GAL-32). Reuses the same classifier. */
+export const SEARCH_RESULT_PROVENANCE_LABEL: Record<PriceProvenanceKind, string> = {
+  live: '실시간 검색 결과',
+  indicative: '예상 가격',
+  mock: '예시 가격',
+  unknown: '가격 출처 확인 불가',
+};
+
+/** Optional results-list banner — only when at least one quote is mock. */
+export const SEARCH_RESULTS_PARTIAL_MOCK_BANNER = '일부 가격은 예시 데이터입니다.';
+
+/** Pre-search CTA — must not claim LIVE or MOCK. */
+export const SEARCH_FORM_CTA_LABEL = '여행지 추천받기';
+
+export const SEARCH_FORM_CTA_HELPER =
+  '예산과 일정에 맞는 여행지를 찾아 드려요.';
+
+export const SEARCH_LOADING_TITLE = '추천을 준비하고 있어요';
+
+export const SEARCH_LOADING_HELPER =
+  '항공·숙소 가격을 불러오는 중이에요.';
+
+/** Phrases banned on the pre-search form (CTA + helpers). */
+export const SEARCH_FORM_BANNED_PHRASES = [
+  'MOCK 검색 시작',
+  'MOCK 데이터로 검색',
+  '실시간 가격 확정',
+  '예약 가능한 가격 검색',
+  'MOCK 예시',
+  '실시간 검색이 아닙니다',
+] as const;
 
 export const SHARED_PROVENANCE_PHRASE: Record<SharedProvenanceSummary, string> = {
   live: '저장 당시 실시간 검색 결과',
@@ -176,4 +209,59 @@ export function formatShareMessageHeadline(
     default:
       return '갈만해 여행 결과 공유 · 가격 출처 확인 필요';
   }
+}
+
+/** Flight/stay chip for live search results — always separate labels. */
+export function formatSearchQuoteProvenanceChip(
+  quote: ProvenanceQuoteFields | null | undefined,
+  channel: 'flight' | 'stay',
+): string {
+  const kind = classifyQuoteProvenance(quote);
+  const prefix = channel === 'flight' ? '항공' : '숙소';
+  return `${prefix} ${SEARCH_RESULT_PROVENANCE_LABEL[kind]}`;
+}
+
+/** Compact detail section marker, e.g. `(실시간 검색 결과)`. */
+export function formatSearchQuoteProvenanceParen(
+  quote: ProvenanceQuoteFields | null | undefined,
+): string {
+  return `(${SEARCH_RESULT_PROVENANCE_LABEL[classifyQuoteProvenance(quote)]})`;
+}
+
+export function quoteIsMockProvenance(
+  quote: ProvenanceQuoteFields | null | undefined,
+): boolean {
+  return classifyQuoteProvenance(quote) === 'mock';
+}
+
+/** True when any recommendation has mock flight or stay provenance. */
+export function recommendationsIncludeMockPrice(
+  items: Array<{
+    flight?: ProvenanceQuoteFields | null;
+    lodging?: ProvenanceQuoteFields | null;
+  }>,
+): boolean {
+  return items.some(
+    (item) => quoteIsMockProvenance(item.flight) || quoteIsMockProvenance(item.lodging),
+  );
+}
+
+/**
+ * Pre-search copy must never claim LIVE or MOCK.
+ * Returns the first banned substring found, or null when clean.
+ */
+export function findBannedPreSearchPhrase(...parts: string[]): string | null {
+  const haystack = parts.join('\n');
+  for (const banned of SEARCH_FORM_BANNED_PHRASES) {
+    if (haystack.includes(banned)) {
+      return banned;
+    }
+  }
+  if (/\bMOCK\b/i.test(haystack)) {
+    return 'MOCK';
+  }
+  if (haystack.includes('실시간 검색') || haystack.includes('실시간 가격')) {
+    return '실시간';
+  }
+  return null;
 }
