@@ -283,20 +283,20 @@ describe('Duffel flights provider (15 mocked HTTP cases)', () => {
     assert.equal(built.flexible, false);
   });
 
-  it('14. service prefers Duffel when token set (Amadeus not called)', async () => {
+  it('14. service skips Duffel when SerpApi unset (Mock; Amadeus not called)', async () => {
     assert.equal(
       resolveActiveFlightProvider(
         baseEnv({ duffelConfigured: true, amadeusConfigured: true }),
       ),
-      'duffel',
+      'mock',
     );
 
+    let duffelHits = 0;
     let amadeusHits = 0;
     mock.method(globalThis, 'fetch', async (url: string | URL) => {
       const href = String(url);
-      if (href.includes('amadeus')) {
-        amadeusHits += 1;
-      }
+      if (href.includes('duffel')) duffelHits += 1;
+      if (href.includes('amadeus')) amadeusHits += 1;
       return mockJsonResponse(200, { data: { offers: [offerFixture()] } });
     });
 
@@ -305,11 +305,12 @@ describe('Duffel flights provider (15 mocked HTTP cases)', () => {
       null,
     );
     const { quote } = await service.searchOne(datedQuery, null);
-    assert.equal(quote.provider, 'duffel');
+    assert.equal(quote.provider, 'mock');
+    assert.equal(duffelHits, 0);
     assert.equal(amadeusHits, 0);
   });
 
-  it('15. service: Duffel failure → Mock (not Amadeus)', async () => {
+  it('15. service: Duffel token alone never enters search path (no Duffel fallback)', async () => {
     mock.method(globalThis, 'fetch', async () =>
       mockJsonResponse(500, { errors: [{ message: 'upstream' }] }),
     );
@@ -325,6 +326,6 @@ describe('Duffel flights provider (15 mocked HTTP cases)', () => {
     const { quote } = await service.searchOne(datedQuery, null);
     assert.equal(quote.provider, 'mock');
     assert.equal(quote.isMock, true);
-    assert.match(quote.summary, /Duffel 실패 폴백/);
+    assert.equal(quote.summary.includes('Duffel 실패 폴백'), false);
   });
 });

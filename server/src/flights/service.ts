@@ -1,8 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ServerEnv } from '../env.js';
-import { searchAmadeusFlights } from './amadeusProvider.js';
 import { TtlCache } from './cache.js';
-import { searchDuffelFlights } from './duffelProvider.js';
 import { searchMockFlights } from './mockProvider.js';
 import { persistFlightSearch } from './persist.js';
 import { searchSerpapiFlights } from './serpapiProvider.js';
@@ -13,12 +11,11 @@ import type {
   FlightSearchRequest,
 } from './types.js';
 
-export type ActiveFlightProvider = 'serpapi' | 'duffel' | 'amadeus' | 'mock';
+/** Active search path only — Duffel/Amadeus modules remain in tree but are not selected. */
+export type ActiveFlightProvider = 'serpapi' | 'mock';
 
 export function resolveActiveFlightProvider(env: ServerEnv): ActiveFlightProvider {
   if (env.serpapiConfigured) return 'serpapi';
-  if (env.duffelConfigured) return 'duffel';
-  if (env.amadeusConfigured) return 'amadeus';
   return 'mock';
 }
 
@@ -66,22 +63,6 @@ export class FlightSearchService {
         quote = searchMockFlights(query);
         quote.summary = `${quote.summary} · SerpApi 실패 폴백`;
       }
-    } else if (active === 'duffel') {
-      try {
-        quote = await searchDuffelFlights(this.env, query);
-      } catch (error) {
-        console.warn('Duffel flight search failed; using MOCK', error);
-        quote = searchMockFlights(query);
-        quote.summary = `${quote.summary} · Duffel 실패 폴백`;
-      }
-    } else if (active === 'amadeus') {
-      try {
-        quote = await searchAmadeusFlights(this.env, query);
-      } catch (error) {
-        console.warn('Amadeus search failed; using MOCK', error);
-        quote = searchMockFlights(query);
-        quote.summary = `${quote.summary} · Amadeus 실패 폴백`;
-      }
     } else {
       quote = searchMockFlights(query);
     }
@@ -127,11 +108,7 @@ export class FlightSearchService {
 
     const provider: ActiveFlightProvider = results.some((item) => item.provider === 'serpapi')
       ? 'serpapi'
-      : results.some((item) => item.provider === 'duffel')
-        ? 'duffel'
-        : results.some((item) => item.provider === 'amadeus')
-          ? 'amadeus'
-          : 'mock';
+      : 'mock';
 
     return {
       searchedAt,

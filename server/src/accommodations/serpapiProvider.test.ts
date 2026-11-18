@@ -561,17 +561,39 @@ describe('AccommodationSearchService SerpApi selection + cache', () => {
     assert.equal(fetchCount, 1);
   });
 
-  it('Amadeus when SerpApi unset', () => {
+  it('Mock when SerpApi unset even if Amadeus keys present', async () => {
     assert.equal(
       resolveActiveAccommodationProvider(
         baseEnv({
           serpapiConfigured: false,
           serpapiApiKey: null,
           amadeusConfigured: true,
+          amadeusClientId: 'x',
+          amadeusClientSecret: 'y',
         }),
       ),
-      'amadeus',
+      'mock',
     );
+
+    let amadeusHits = 0;
+    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+      if (String(url).includes('amadeus')) amadeusHits += 1;
+      return mockJsonResponse(200, { data: [] });
+    });
+
+    const service = new AccommodationSearchService(
+      baseEnv({
+        serpapiConfigured: false,
+        serpapiApiKey: null,
+        amadeusConfigured: true,
+        amadeusClientId: 'x',
+        amadeusClientSecret: 'y',
+      }),
+      null,
+    );
+    const { quote } = await service.searchOne(datedQuery, null);
+    assert.equal(quote.provider, 'mock');
+    assert.equal(amadeusHits, 0);
   });
 
   it('Mock when no live stay providers configured', async () => {

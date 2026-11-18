@@ -85,7 +85,7 @@ app.get('/health', (_req, res) => {
       hl: serpapiClientInfo.hl,
       currency: serpapiClientInfo.currency,
     },
-    // Flights: SerpApi → Duffel → Amadeus → mock. Stays: SerpApi → Amadeus → mock.
+    // Active search path: SerpApi → mock (flights + stays). Duffel/Amadeus stay configured flags only.
     flightProvider: activeFlightProvider,
     accommodationProvider: activeAccommodationProvider,
     activeFlightProvider,
