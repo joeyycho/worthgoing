@@ -99,6 +99,7 @@ function normalizeBreakdown(
  * - Legacy localSpend without total → sum valid fields (no double-count vs breakdown; no invented transport).
  * - Synthesize estimate `localSpendMeta` when local present but meta missing.
  * - Leave legacy `within_budget` / `over_budget` / `price_unknown` statuses as-is (labels already estimate-worded).
+ * - Do NOT overwrite, default, or invent flight/lodging `isMock` / `priceMode` (price provenance).
  */
 export function normalizeRecommendationSnapshot(
   raw: DestinationRecommendation,
