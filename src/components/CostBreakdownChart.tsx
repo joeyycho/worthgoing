@@ -59,11 +59,11 @@ export function CostBreakdownChart({
         <span className="chip-muted">검색 + 현지 예상</span>
       </div>
       <p className="helper-text">
-        항공·숙소는 검색 시세이고, 현지비는 카탈로그 일일 단가 기반 예상이에요. 확정 예약 총액이
-        아닙니다.
+        항공·숙소는 검색 결과 가격이고, 현지비는 카탈로그 일일 단가 기반 예상이에요. 확정 예약
+        총액이 아닙니다. 가격 출처는 각 항목 표기를 확인해 주세요.
       </p>
 
-      <h3 className="cost-chart-subtitle">실시간 검색</h3>
+      <h3 className="cost-chart-subtitle">항공·숙소 검색</h3>
       <div className="cost-chart-bars" role="list">
         {liveAmounts.map((row) => {
           const ratio =
