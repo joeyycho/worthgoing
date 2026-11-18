@@ -1,4 +1,4 @@
-import type { SavedTrip, TripSnapshot } from '../types/tripStore';
+import type { SavedTrip, SaveTripResult, TripSnapshot } from '../types/tripStore';
 import {
   apiListSavedTrips,
   apiRemoveSavedTrip,
@@ -13,6 +13,15 @@ import {
   localSaveTrip,
 } from './localSavedTripsStore';
 import { normalizeTripSnapshot } from './normalizeRecommendationSnapshot';
+import { SAVE_FAIL } from './saveTripMessages';
+
+export {
+  SAVE_FAIL,
+  SAVE_SUCCESS_CLOUD,
+  SAVE_SUCCESS_LOCAL,
+  SAVE_SUCCESS_LOCAL_AFTER_CLOUD_FAIL,
+  saveSuccessMessage,
+} from './saveTripMessages';
 
 function withNormalizedSnapshot(trip: SavedTrip): SavedTrip {
   return { ...trip, snapshot: normalizeTripSnapshot(trip.snapshot) };
@@ -53,15 +62,24 @@ export async function getSavedTrip(id: string): Promise<SavedTrip | null> {
   return localGetSavedTrip(id);
 }
 
-export async function saveTrip(snapshot: TripSnapshot): Promise<SavedTrip> {
+export async function saveTrip(snapshot: TripSnapshot): Promise<SaveTripResult> {
   if (await isSupabaseBackendAvailable()) {
     try {
-      return await apiSaveTrip(snapshot);
+      const trip = await apiSaveTrip(snapshot);
+      return { trip, persistence: 'cloud' };
     } catch (error) {
       console.warn('saved trip save API failed; falling back to local store', error);
+      try {
+        const trip = await localSaveTrip(snapshot);
+        return { trip, persistence: 'local_after_cloud_fail' };
+      } catch (localError) {
+        console.warn('saved trip local fallback also failed', localError);
+        throw localError instanceof Error ? localError : new Error(SAVE_FAIL);
+      }
     }
   }
-  return localSaveTrip(snapshot);
+  const trip = await localSaveTrip(snapshot);
+  return { trip, persistence: 'local' };
 }
 
 export async function removeSavedTrip(id: string): Promise<void> {

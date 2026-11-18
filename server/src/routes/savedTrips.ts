@@ -2,15 +2,7 @@ import type { Express, Request, Response } from 'express';
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ensureUserByExternalKey } from '../users.js';
-
-const snapshotSchema = z.object({
-  version: z.literal(1),
-  capturedAt: z.string(),
-  form: z.record(z.string(), z.unknown()),
-  recommendation: z.record(z.string(), z.unknown()),
-  isMock: z.literal(true),
-  storageKind: z.enum(['client-local-mock', 'supabase']),
-});
+import { tripSnapshotSchema } from './tripSnapshotSchema.js';
 
 function userKey(req: Request): string | null {
   const header = req.header('x-user-key');
@@ -62,7 +54,7 @@ export function registerSavedTripRoutes(app: Express, supabase: SupabaseClient) 
 
       const body = z
         .object({
-          snapshot: snapshotSchema,
+          snapshot: tripSnapshotSchema,
         })
         .parse(req.body);
 

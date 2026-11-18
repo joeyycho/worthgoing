@@ -24,6 +24,19 @@ export interface SavedTrip {
   snapshot: TripSnapshot;
 }
 
+/**
+ * Where the save landed.
+ * - `cloud`: Supabase API succeeded
+ * - `local`: intentional device store (API not configured / unavailable) — not a cloud failure
+ * - `local_after_cloud_fail`: cloud save threw; device fallback succeeded
+ */
+export type SaveTripPersistence = 'cloud' | 'local' | 'local_after_cloud_fail';
+
+export interface SaveTripResult {
+  trip: SavedTrip;
+  persistence: SaveTripPersistence;
+}
+
 export interface SharedTripRecord {
   id: string;
   createdAt: string;

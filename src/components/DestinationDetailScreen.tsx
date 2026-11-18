@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { BUDGET_STATUS_LABEL } from '../constants/recommendation';
 import { formatKrw } from '../constants/travelSearch';
-import { saveTrip } from '../services/savedTripsStore';
+import { SAVE_FAIL, saveSuccessMessage, saveTrip } from '../services/savedTripsStore';
 import { shareTripSnapshot, type ShareTripResult } from '../services/shareTrip';
 import { createTripSnapshot } from '../services/tripSnapshot';
 import type { DestinationRecommendation } from '../types/recommendation';
@@ -88,10 +88,10 @@ export function DestinationDetailScreen({
     setSaveNote(null);
     try {
       const snapshot = createTripSnapshot(form, item);
-      await saveTrip(snapshot);
-      setSaveNote('저장했어요. “저장한 여행” 탭에서 확인할 수 있어요.');
-    } catch (error) {
-      setSaveNote(error instanceof Error ? error.message : '저장에 실패했어요.');
+      const result = await saveTrip(snapshot);
+      setSaveNote(saveSuccessMessage(result.persistence));
+    } catch {
+      setSaveNote(SAVE_FAIL);
     } finally {
       setBusy(null);
     }
