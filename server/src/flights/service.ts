@@ -5,6 +5,7 @@ import { TtlCache } from './cache.js';
 import { searchDuffelFlights } from './duffelProvider.js';
 import { searchMockFlights } from './mockProvider.js';
 import { persistFlightSearch } from './persist.js';
+import { searchSerpapiFlights } from './serpapiProvider.js';
 import type {
   BatchFlightSearchRequest,
   BatchFlightSearchResponse,
@@ -12,9 +13,10 @@ import type {
   FlightSearchRequest,
 } from './types.js';
 
-export type ActiveFlightProvider = 'duffel' | 'amadeus' | 'mock';
+export type ActiveFlightProvider = 'serpapi' | 'duffel' | 'amadeus' | 'mock';
 
 export function resolveActiveFlightProvider(env: ServerEnv): ActiveFlightProvider {
+  if (env.serpapiConfigured) return 'serpapi';
   if (env.duffelConfigured) return 'duffel';
   if (env.amadeusConfigured) return 'amadeus';
   return 'mock';
@@ -56,7 +58,15 @@ export class FlightSearchService {
     const active = resolveActiveFlightProvider(this.env);
     let quote: FlightQuoteResult;
 
-    if (active === 'duffel') {
+    if (active === 'serpapi') {
+      try {
+        quote = await searchSerpapiFlights(this.env, query);
+      } catch (error) {
+        console.warn('SerpApi flight search failed; using MOCK', error);
+        quote = searchMockFlights(query);
+        quote.summary = `${quote.summary} · SerpApi 실패 폴백`;
+      }
+    } else if (active === 'duffel') {
       try {
         quote = await searchDuffelFlights(this.env, query);
       } catch (error) {
@@ -115,11 +125,13 @@ export class FlightSearchService {
       return a.totalFareKrw - b.totalFareKrw;
     });
 
-    const provider: ActiveFlightProvider = results.some((item) => item.provider === 'duffel')
-      ? 'duffel'
-      : results.some((item) => item.provider === 'amadeus')
-        ? 'amadeus'
-        : 'mock';
+    const provider: ActiveFlightProvider = results.some((item) => item.provider === 'serpapi')
+      ? 'serpapi'
+      : results.some((item) => item.provider === 'duffel')
+        ? 'duffel'
+        : results.some((item) => item.provider === 'amadeus')
+          ? 'amadeus'
+          : 'mock';
 
     return {
       searchedAt,
