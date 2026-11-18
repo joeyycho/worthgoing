@@ -25,7 +25,9 @@ npm run dev
 
 Supabase를 쓰려면 `server/.env`에 `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`를 넣고, 마이그레이션을 적용하세요. 자세한 방법은 `supabase/README.md`.
 
-Amadeus 항공·숙소(stage 6–7): `server/.env`에 `AMADEUS_CLIENT_ID` / `AMADEUS_CLIENT_SECRET`을 넣으면 서버가 Flight + Hotel List/Search를 호출합니다. 키가 없거나 API 실패 시 Mock 프로바이더 + MOCK 배너로 폴백합니다. Vite/`VITE_*`에 Amadeus 비밀키를 넣지 마세요.
+Amadeus 항공·숙소(stage 6–7, still active): `server/.env`에 `AMADEUS_CLIENT_ID` / `AMADEUS_CLIENT_SECRET`을 넣으면 서버가 Flight + Hotel List/Search를 호출합니다. 키가 없거나 API 실패 시 Mock 프로바이더 + MOCK 배너로 폴백합니다. Vite/`VITE_*`에 비밀키를 넣지 마세요.
+
+Duffel (migration in progress): `server/.env`에 `DUFFEL_ACCESS_TOKEN`을 넣으면 `/health`에 `duffelConfigured: true`가 표시됩니다. 토큰은 [Duffel Dashboard](https://app.duffel.com/) → More → Developers → Access tokens에서 발급합니다. **테스트 토큰(`duffel_test_…`)과 라이브 토큰(`duffel_live_…`)을 섞지 마세요** ([test mode](https://duffel.com/docs/api/overview/test-mode)). HTTP 클라이언트는 `server/src/duffel/`에 있으며, 항공·숙소 검색 프로바이더 교체는 이후 단계에서 진행합니다.
 
 ## 빌드 / 패키징 / 콘솔 테스트
 
