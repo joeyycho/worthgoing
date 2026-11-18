@@ -44,6 +44,15 @@ export function loadServerEnv() {
     flightCacheTtlMs: Number(process.env.FLIGHT_CACHE_TTL_MS ?? 15 * 60 * 1000),
     flightTimeoutMs: Number(process.env.FLIGHT_TIMEOUT_MS ?? 12_000),
     flightRateLimitPerMinute: Number(process.env.FLIGHT_RATE_LIMIT_PER_MINUTE ?? 30),
+
+    /** Hotel List + Hotel Search (same Amadeus OAuth credentials). */
+    accommodationCacheTtlMs: Number(process.env.ACCOMMODATION_CACHE_TTL_MS ?? 15 * 60 * 1000),
+    accommodationTimeoutMs: Number(process.env.ACCOMMODATION_TIMEOUT_MS ?? 12_000),
+    accommodationRateLimitPerMinute: Number(
+      process.env.ACCOMMODATION_RATE_LIMIT_PER_MINUTE ?? 30,
+    ),
+    /** Max hotels from Hotel List to price via Hotel Search v3 */
+    accommodationHotelIdLimit: Number(process.env.ACCOMMODATION_HOTEL_ID_LIMIT ?? 5),
   };
 }
 

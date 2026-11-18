@@ -1,4 +1,5 @@
 import { MOCK_DESTINATIONS } from '../data/mockDestinations';
+import { ApiAccommodationProvider } from '../providers/ApiAccommodationProvider';
 import { ApiFlightProvider } from '../providers/ApiFlightProvider';
 import { MockAccommodationProvider } from '../providers/MockAccommodationProvider';
 import { MockFlightProvider } from '../providers/MockFlightProvider';
@@ -8,9 +9,33 @@ import type {
   LocalSpendEstimate,
   RecommendationSort,
 } from '../types/recommendation';
-import type { FlightQuote } from '../types/providers';
+import type { AccommodationQuote, FlightQuote } from '../types/providers';
 import type { TravelSearchFormState } from '../types/travelSearch';
 import { isApiConfigured } from './api/tripApiClient';
+
+/** Airport / destination id → IATA city code for Hotel List by-city */
+const HOTEL_CITY_CODE: Record<string, string> = {
+  KIX: 'OSA',
+  OSA: 'OSA',
+  osaka: 'OSA',
+  BKK: 'BKK',
+  bangkok: 'BKK',
+  DAD: 'DAD',
+  danang: 'DAD',
+  TPE: 'TPE',
+  taipei: 'TPE',
+  CDG: 'PAR',
+  PAR: 'PAR',
+  paris: 'PAR',
+  CJU: 'CJU',
+  jeju: 'CJU',
+  SIN: 'SIN',
+  singapore: 'SIN',
+};
+
+function hotelCityCode(destination: { id: string; airportCode: string }): string | undefined {
+  return HOTEL_CITY_CODE[destination.airportCode] ?? HOTEL_CITY_CODE[destination.id];
+}
 
 function buildMockFlightProvider() {
   const priceFactorByDestination = Object.fromEntries(
@@ -22,7 +47,7 @@ function buildMockFlightProvider() {
   return new MockFlightProvider({ priceFactorByDestination, forceUnknownIds });
 }
 
-function buildStayProvider() {
+function buildMockStayProvider() {
   const priceFactorByDestination = Object.fromEntries(
     MOCK_DESTINATIONS.map((item) => [item.id, item.priceFactor]),
   );
@@ -134,14 +159,68 @@ async function loadFlightQuotes(form: TravelSearchFormState): Promise<Map<string
   return new Map(entries);
 }
 
+async function loadStayQuotes(
+  form: TravelSearchFormState,
+  nights: number,
+): Promise<Map<string, AccommodationQuote>> {
+  const mock = buildMockStayProvider();
+  const rooms = Math.max(1, Math.ceil(form.travelers / 2));
+  const destinations = MOCK_DESTINATIONS.map((item) => ({
+    id: item.id,
+    city: item.city,
+    country: item.country,
+    cityCode: hotelCityCode(item),
+    airportCode: item.airportCode,
+  }));
+
+  if (isApiConfigured()) {
+    try {
+      const api = new ApiAccommodationProvider();
+      return await api.searchBatch(
+        {
+          travelers: form.travelers,
+          nights,
+          rooms,
+          checkInDate: form.departureDate,
+          checkOutDate: form.returnDate,
+        },
+        destinations,
+      );
+    } catch (error) {
+      console.warn('Accommodation API unavailable; using MockAccommodationProvider', error);
+    }
+  }
+
+  const entries = await Promise.all(
+    MOCK_DESTINATIONS.map(async (destination) => {
+      const quote = await mock.searchAccommodations({
+        city: destination.city,
+        country: destination.country,
+        travelers: form.travelers,
+        nights,
+        rooms,
+        checkInDate: form.departureDate,
+        checkOutDate: form.returnDate,
+        cityCode: hotelCityCode(destination),
+        airportCode: destination.airportCode,
+        destinationId: destination.id,
+      });
+      return [destination.id, quote] as const;
+    }),
+  );
+  return new Map(entries);
+}
+
 export async function recommendDestinations(
   form: TravelSearchFormState,
   sort: RecommendationSort = 'lowest_cost',
 ): Promise<DestinationRecommendation[]> {
   const totalBudgetKrw = form.budgetPerPerson * form.travelers;
   const nights = Math.max(1, form.tripLengthDays - 1);
-  const stays = buildStayProvider();
-  const flightMap = await loadFlightQuotes(form);
+  const [flightMap, stayMap] = await Promise.all([
+    loadFlightQuotes(form),
+    loadStayQuotes(form, nights),
+  ]);
 
   const rows = await Promise.all(
     MOCK_DESTINATIONS.map(async (destination) => {
@@ -157,15 +236,20 @@ export async function recommendDestinations(
           destinationId: destination.id,
         }));
 
-      const lodging = await stays.searchAccommodations({
-        city: destination.city,
-        country: destination.country,
-        travelers: form.travelers,
-        nights,
-        checkInDate: form.departureDate,
-        checkOutDate: form.returnDate,
-        destinationId: destination.id,
-      });
+      const lodging =
+        stayMap.get(destination.id) ??
+        (await buildMockStayProvider().searchAccommodations({
+          city: destination.city,
+          country: destination.country,
+          travelers: form.travelers,
+          nights,
+          rooms: Math.max(1, Math.ceil(form.travelers / 2)),
+          checkInDate: form.departureDate,
+          checkOutDate: form.returnDate,
+          cityCode: hotelCityCode(destination),
+          airportCode: destination.airportCode,
+          destinationId: destination.id,
+        }));
 
       const localSpend = estimateLocalSpend(
         destination.localDailyPerPerson,
