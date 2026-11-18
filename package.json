@@ -6,6 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build && ait build",
+    "ait:verify": "node scripts/verify-ait.mjs",
+    "ait:package": "npm run build && npm run ait:verify",
+    "check": "npm run lint && npm run server:typecheck && npm run ait:package",
+    "smoke:server": "node scripts/smoke-server.mjs",
     "lint": "oxlint",
     "preview": "vite preview",
     "deploy": "ait deploy",

@@ -14,9 +14,26 @@ export function loadServerEnv() {
   const amadeusClientSecret = process.env.AMADEUS_CLIENT_SECRET;
   const amadeusConfigured = Boolean(amadeusClientId && amadeusClientSecret);
 
+  /**
+   * Comma-separated allowlist, or `*` for any origin.
+   * For Apps in Toss QR / live (SDK 3.10), register the mini-app origins from
+   * https://developers-apps-in-toss.toss.im/guide/en/operation/toss
+   * (e.g. `*.private-apps.tossmini.com` / `*.apps.tossmini.com` hostnames
+   * as shown in the console for this app — do not invent hostnames).
+   */
+  const corsOriginRaw = process.env.CORS_ORIGIN ?? '*';
+  const corsOrigins =
+    corsOriginRaw === '*'
+      ? ('*' as const)
+      : corsOriginRaw
+          .split(',')
+          .map((part) => part.trim())
+          .filter(Boolean);
+
   return {
     port: Number(process.env.PORT ?? 8787),
-    corsOrigin: process.env.CORS_ORIGIN ?? '*',
+    corsOrigin: corsOriginRaw,
+    corsOrigins,
 
     supabaseConfigured,
     supabaseUrl: supabaseConfigured ? required('SUPABASE_URL', supabaseUrl) : null,
