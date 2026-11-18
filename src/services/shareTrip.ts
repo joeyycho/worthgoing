@@ -1,5 +1,6 @@
 import { Share } from '@apps-in-toss/web-framework';
 import type { TripSnapshot } from '../types/tripStore';
+import { formatShareMessageHeadline } from '../utils/priceProvenance';
 import { encodeSnapshotPayload, rememberSharedTrip } from './sharedTripsStore';
 
 /** Must match apps-in-toss.config.ts `appName` / console app id */
@@ -47,9 +48,14 @@ export async function shareTripSnapshot(snapshot: TripSnapshot): Promise<ShareTr
       tossLink = await Share.createLink({ path: shortDeepLinkPath });
     }
 
+    const headline = formatShareMessageHeadline(
+      snapshot.recommendation.flight,
+      snapshot.recommendation.lodging,
+    );
+
     await Share.sendMessage({
       message: [
-        '갈만해 MOCK 여행 결과 공유',
+        headline,
         '가격은 공유 시점 기준이며 현재와 다를 수 있어요.',
         tossLink,
         '',
@@ -79,7 +85,7 @@ export async function shareTripSnapshot(snapshot: TripSnapshot): Promise<ShareTr
       webShareUrl,
       sharedLink: webShareUrl,
       usedTossShareApi: false,
-      note: '토스 Share API를 쓸 수 없어 웹 공유 링크를 복사했어요. 링크에 MOCK 스냅샷이 포함됩니다. Supabase API가 켜져 있으면 id로 서버 조회도 가능해요.',
+      note: '토스 Share API를 쓸 수 없어 웹 공유 링크를 복사했어요. 링크에 저장 시점 스냅샷이 포함됩니다. Supabase API가 켜져 있으면 id로 서버 조회도 가능해요.',
     };
   }
 }

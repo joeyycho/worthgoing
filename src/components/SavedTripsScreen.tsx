@@ -5,6 +5,7 @@ import { useNestedBackNavigation } from '../hooks/useNestedBackNavigation';
 import { listSavedTrips, removeSavedTrip } from '../services/savedTripsStore';
 import { formatCapturedAt } from '../services/tripSnapshot';
 import type { SavedTrip } from '../types/tripStore';
+import { formatSavedTripProvenanceSummary } from '../utils/priceProvenance';
 import { DestinationDetailScreen } from './DestinationDetailScreen';
 
 export function SavedTripsScreen() {
@@ -132,6 +133,15 @@ export function SavedTripsScreen() {
                     <p className="helper-text">
                       예산 {formatKrw(form.budgetPerPerson * form.travelers)}원 · {form.travelers}명 ·{' '}
                       {form.tripLengthDays}일
+                    </p>
+                    <p
+                      className="helper-text saved-provenance"
+                      data-testid="saved-provenance"
+                    >
+                      {formatSavedTripProvenanceSummary(
+                        recommendation.flight,
+                        recommendation.lodging,
+                      )}
                     </p>
                     <p className="helper-text">저장 시각 {formatCapturedAt(capturedAt)}</p>
                   </div>
