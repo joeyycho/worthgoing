@@ -14,6 +14,9 @@ export function loadServerEnv() {
   const amadeusClientSecret = process.env.AMADEUS_CLIENT_SECRET;
   const amadeusConfigured = Boolean(amadeusClientId && amadeusClientSecret);
 
+  const duffelAccessToken = process.env.DUFFEL_ACCESS_TOKEN?.trim() || null;
+  const duffelConfigured = Boolean(duffelAccessToken);
+
   /**
    * Comma-separated allowlist, or `*` for any origin.
    * For Apps in Toss QR / live (SDK 3.10), register the mini-app origins from
@@ -57,6 +60,20 @@ export function loadServerEnv() {
     amadeusHostname: process.env.AMADEUS_HOSTNAME ?? 'test.api.amadeus.com',
     /** Display conversion only when Amadeus returns non-KRW (usually EUR). Not a live FX feed. */
     amadeusKrwPerEur: Number(process.env.AMADEUS_KRW_PER_EUR ?? 1500),
+
+    /**
+     * Duffel access token (server-only). Create in Dashboard → Developers → Access tokens.
+     * Test tokens start with `duffel_test_`; live with `duffel_live_`. Do not mix modes.
+     * https://duffel.com/docs/api/overview/making-requests
+     * https://duffel.com/docs/api/overview/test-mode
+     */
+    duffelConfigured,
+    duffelAccessToken: duffelConfigured
+      ? required('DUFFEL_ACCESS_TOKEN', duffelAccessToken ?? undefined)
+      : null,
+    duffelBaseUrl: process.env.DUFFEL_BASE_URL ?? 'https://api.duffel.com',
+    duffelApiVersion: process.env.DUFFEL_API_VERSION ?? 'v2',
+    duffelTimeoutMs: Number(process.env.DUFFEL_TIMEOUT_MS ?? 12_000),
 
     flightCacheTtlMs: Number(process.env.FLIGHT_CACHE_TTL_MS ?? 15 * 60 * 1000),
     flightTimeoutMs: Number(process.env.FLIGHT_TIMEOUT_MS ?? 12_000),

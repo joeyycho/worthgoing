@@ -2,6 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { AccommodationSearchService } from './accommodations/service.js';
+import { describeDuffelClient } from './duffel/client.js';
 import { loadServerEnv } from './env.js';
 import { FlightSearchService } from './flights/service.js';
 import { FixedWindowRateLimiter } from './flights/rateLimit.js';
@@ -12,6 +13,7 @@ import { registerSharedTripRoutes } from './routes/sharedTrips.js';
 import { createServiceClient } from './supabase.js';
 
 const env = loadServerEnv();
+const duffelClientInfo = describeDuffelClient(env);
 const app = express();
 
 app.use(
@@ -60,14 +62,25 @@ app.get('/health', (_req, res) => {
     ok: true,
     supabaseConfigured: env.supabaseConfigured,
     amadeusConfigured: env.amadeusConfigured,
+    duffelConfigured: env.duffelConfigured,
+    duffel: {
+      configured: duffelClientInfo.configured,
+      baseUrl: duffelClientInfo.baseUrl,
+      apiVersion: duffelClientInfo.apiVersion,
+      tokenPrefix: duffelClientInfo.tokenPrefix,
+    },
+    // Providers still Amadeus until steps 3–4 swap; Duffel client is scaffolding only.
     flightProvider: env.amadeusConfigured ? 'amadeus' : 'mock',
     accommodationProvider: env.amadeusConfigured ? 'amadeus' : 'mock',
-    mode: env.supabaseConfigured || env.amadeusConfigured ? 'partial-or-full' : 'offline-mock',
+    mode:
+      env.supabaseConfigured || env.amadeusConfigured || env.duffelConfigured
+        ? 'partial-or-full'
+        : 'offline-mock',
   });
 });
 
 app.listen(env.port, () => {
   console.log(
-    `[galmanhae-server] :${env.port} supabase=${env.supabaseConfigured} amadeus=${env.amadeusConfigured}`,
+    `[galmanhae-server] :${env.port} supabase=${env.supabaseConfigured} amadeus=${env.amadeusConfigured} duffel=${env.duffelConfigured}`,
   );
 });
