@@ -2,6 +2,8 @@ import type { FlightQuoteResult, FlightSearchRequest } from './types.js';
 
 const BASE_FARE_BY_AIRPORT: Record<string, number> = {
   KIX: 280_000,
+  NRT: 340_000,
+  FUK: 290_000,
   BKK: 320_000,
   DAD: 260_000,
   TPE: 250_000,

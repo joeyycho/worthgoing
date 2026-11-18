@@ -3,6 +3,8 @@ import type { AccommodationQuoteResult, AccommodationSearchRequest } from './typ
 
 const NIGHTLY_BASE_BY_CITY: Record<string, number> = {
   오사카: 95_000,
+  도쿄: 120_000,
+  후쿠오카: 100_000,
   방콕: 70_000,
   다낭: 60_000,
   타이베이: 85_000,

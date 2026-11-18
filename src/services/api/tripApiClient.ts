@@ -2,7 +2,7 @@ import type { SavedTrip, SharedTripRecord, TripSnapshot } from '../../types/trip
 import { getClientUserKey } from '../userKey';
 
 export function isApiConfigured(): boolean {
-  return Boolean(import.meta.env.VITE_API_BASE_URL);
+  return Boolean(import.meta.env?.VITE_API_BASE_URL);
 }
 
 function apiBase(): string {
