@@ -8,8 +8,25 @@ interface DestinationCardProps {
   onSelect: (id: string) => void;
 }
 
+function tripTotalLabel(item: DestinationRecommendation): string {
+  if (item.status === 'price_unknown') {
+    return '총비용 미확정 · 가격 확인 필요';
+  }
+  if (item.status === 'local_spend_unknown') {
+    const search = item.searchCost.searchCostTotalKrw;
+    return search == null
+      ? '현지비 미확정'
+      : `검색 ${formatKrw(search)}원 · 현지비 미확정`;
+  }
+  if (item.estimatedTripTotalKrw == null) {
+    return '총비용 미확정 · 가격 확인 필요';
+  }
+  return `예상 ${formatKrw(item.estimatedTripTotalKrw)}원`;
+}
+
 export function DestinationCard({ item, onSelect }: DestinationCardProps) {
-  const { destination, status, estimatedTotalKrw, remainingPercent, flight, lodging } = item;
+  const { destination, status, remainingPercent, flight, lodging, searchCost, localSpendTotalKrw } =
+    item;
 
   return (
     <button
@@ -29,11 +46,13 @@ export function DestinationCard({ item, onSelect }: DestinationCardProps) {
           <span className={`budget-badge status-${status}`}>{BUDGET_STATUS_LABEL[status]}</span>
         </div>
 
-        {status === 'price_unknown' || estimatedTotalKrw == null ? (
-          <p className="destination-card-total muted">총비용 미확정 · 가격 확인 필요</p>
-        ) : (
-          <p className="destination-card-total">{formatKrw(estimatedTotalKrw)}원</p>
-        )}
+        <p
+          className={`destination-card-total${
+            item.estimatedTripTotalKrw == null ? ' muted' : ''
+          }`}
+        >
+          {tripTotalLabel(item)}
+        </p>
 
         <p
           className="flight-mode-chip"
@@ -61,6 +80,11 @@ export function DestinationCard({ item, onSelect }: DestinationCardProps) {
                 ? '숙소 예상'
                 : `숙소 실시간 · ${new Date(lodging.searchedAt).toLocaleString('ko-KR')}`}
         </p>
+        <p className="flight-mode-chip" data-mode={localSpendTotalKrw == null ? 'unknown' : 'indicative'}>
+          {localSpendTotalKrw == null
+            ? '현지비 미확정'
+            : `현지 예상 ${formatKrw(localSpendTotalKrw)}원`}
+        </p>
 
         <dl className="destination-card-meta">
           <div>
@@ -70,11 +94,19 @@ export function DestinationCard({ item, onSelect }: DestinationCardProps) {
           <div>
             <dt>숙소</dt>
             <dd>
-              {lodging.totalStayKrw == null ? '확인 필요' : `${formatKrw(lodging.totalStayKrw)}원`}
+              {lodging.totalStayKrw == null ? '확인불가' : `${formatKrw(lodging.totalStayKrw)}원`}
             </dd>
           </div>
           <div>
-            <dt>잔여</dt>
+            <dt>검색합</dt>
+            <dd>
+              {searchCost.searchCostTotalKrw == null
+                ? '—'
+                : `${formatKrw(searchCost.searchCostTotalKrw)}원`}
+            </dd>
+          </div>
+          <div>
+            <dt>잔여(예상)</dt>
             <dd>
               {remainingPercent == null
                 ? '—'

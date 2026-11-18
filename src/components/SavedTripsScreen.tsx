@@ -95,7 +95,10 @@ export function SavedTripsScreen() {
         <ul className="saved-list">
           {trips.map((trip) => {
             const { recommendation, form, capturedAt } = trip.snapshot;
-            const total = recommendation.estimatedTotalKrw;
+            const total =
+              recommendation.estimatedTripTotalKrw ?? recommendation.estimatedTotalKrw;
+            const statusLabel =
+              BUDGET_STATUS_LABEL[recommendation.status] ?? recommendation.status;
             return (
               <li key={trip.id}>
                 <button
@@ -116,11 +119,15 @@ export function SavedTripsScreen() {
                         <h2 className="destination-card-title">{recommendation.destination.city}</h2>
                       </div>
                       <span className={`budget-badge status-${recommendation.status}`}>
-                        {BUDGET_STATUS_LABEL[recommendation.status]}
+                        {statusLabel}
                       </span>
                     </div>
                     <p className="destination-card-total">
-                      {total == null ? '가격 확인 필요' : `${formatKrw(total)}원`}
+                      {total == null
+                        ? recommendation.status === 'local_spend_unknown'
+                          ? '현지비 미확정'
+                          : '가격 확인 필요'
+                        : `예상 ${formatKrw(total)}원`}
                     </p>
                     <p className="helper-text">
                       예산 {formatKrw(form.budgetPerPerson * form.travelers)}원 · {form.travelers}명 ·{' '}

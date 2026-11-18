@@ -55,8 +55,18 @@ export function DestinationDetailScreen({
   capturedAt,
   onDeleteSaved,
 }: DestinationDetailScreenProps) {
-  const { destination, flight, lodging, status, estimatedTotalKrw, remainingKrw, remainingPercent } =
-    item;
+  const {
+    destination,
+    flight,
+    lodging,
+    status,
+    estimatedTripTotalKrw,
+    remainingKrw,
+    remainingPercent,
+    searchCost,
+    localSpendTotalKrw,
+    localSpendMeta,
+  } = item;
   const lodgingQualify = stayPriceQualification(lodging.summary);
   const [saveNote, setSaveNote] = useState<string | null>(null);
   const [shareNote, setShareNote] = useState<string | null>(null);
@@ -120,19 +130,40 @@ export function DestinationDetailScreen({
       <p className="page-subtitle">{destination.intro}</p>
 
       <section className="detail-summary total-budget">
-        <h2 className="section-title">예상 총비용</h2>
-        {estimatedTotalKrw == null ? (
-          <p className="total-budget-value muted-total">가격 확인 필요</p>
+        <h2 className="section-title">여행 예상 총비용</h2>
+        {estimatedTripTotalKrw == null ? (
+          <p className="total-budget-value muted-total">
+            {status === 'local_spend_unknown' ? '현지비 미확정' : '가격 확인 필요'}
+          </p>
         ) : (
-          <p className="total-budget-value">{formatKrw(estimatedTotalKrw)}원</p>
+          <p className="total-budget-value">{formatKrw(estimatedTripTotalKrw)}원</p>
         )}
+        <p className="helper-text">
+          검색(항공+숙소)과 현지 예상비를 합친 추정액이에요. 확정 예약 총액이 아닙니다.
+        </p>
+        <dl className="cost-summary-meta">
+          <div>
+            <dt>검색 합계</dt>
+            <dd>
+              {searchCost.searchCostTotalKrw == null
+                ? '확인불가'
+                : `${formatKrw(searchCost.searchCostTotalKrw)}원`}
+            </dd>
+          </div>
+          <div>
+            <dt>현지 예상</dt>
+            <dd>
+              {localSpendTotalKrw == null ? '미확정' : `${formatKrw(localSpendTotalKrw)}원`}
+            </dd>
+          </div>
+        </dl>
         <p className="helper-text">
           총 예산 {formatKrw(item.totalBudgetKrw)}원
           {remainingKrw == null || remainingPercent == null
-            ? ' · 잔여 예산 미확정'
+            ? ' · 잔여(예상) 미확정'
             : remainingKrw >= 0
-              ? ` · 잔여 ${formatKrw(remainingKrw)}원 (${remainingPercent}%)`
-              : ` · ${formatKrw(Math.abs(remainingKrw))}원 초과 (${remainingPercent}%)`}
+              ? ` · 잔여(예상) ${formatKrw(remainingKrw)}원 (${remainingPercent}%)`
+              : ` · 예상 ${formatKrw(Math.abs(remainingKrw))}원 초과 (${remainingPercent}%)`}
         </p>
       </section>
 
@@ -328,7 +359,13 @@ export function DestinationDetailScreen({
         )}
       </section>
 
-      <CostBreakdownChart breakdown={item.breakdown} />
+      <CostBreakdownChart
+        breakdown={item.breakdown}
+        localSpendMeta={localSpendMeta}
+        searchCostTotalKrw={searchCost.searchCostTotalKrw}
+        localSpendTotalKrw={localSpendTotalKrw}
+        estimatedTripTotalKrw={estimatedTripTotalKrw}
+      />
 
       <ListBlock title="명소" items={destination.attractions} />
       <ListBlock title="먹거리" items={destination.food} />
