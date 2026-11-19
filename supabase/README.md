@@ -47,9 +47,19 @@ Secrets stay in `server/` only (`SUPABASE_SERVICE_ROLE_KEY`). The Vite app talks
 
 ```bash
 cd server
-cp .env.example .env   # fill real values locally — do not commit
+cp .env.example .env   # fill Dev project values locally — do not commit
 npm install
-npm run dev
+npm run dev            # sets NODE_ENV=development; loads server/.env via process.loadEnvFile
 ```
+
+Local loading gate (`server/src/env.ts`):
+
+| `NODE_ENV` | `server/.env` |
+| --- | --- |
+| `development` | load if present |
+| `production` | never load |
+| unset / other | never load |
+
+`npm run dev` sets `NODE_ENV=development`. Plain `npm start` does not — set `NODE_ENV=development` yourself if you want file load, or inject env via the host. Existing process env values always win over the file. Production/deploy should inject `SUPABASE_*` via the host (no committed `.env`).
 
 Without env configured, the server responds `503` on `/api/*` and the mini-app falls back to client Storage.
