@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   applyDateRangeTap,
+  canConfirmPendingDateRange,
   dateRangePhase,
   emptyPendingRange,
   isDateInSelectedRange,
@@ -12,8 +13,8 @@ import {
 
 const TODAY = '2026-11-19';
 
-describe('dateRangeSelection (QA-07..10)', () => {
-  it('first tap sets departure; second sets return; third restarts', () => {
+describe('dateRangeSelection (QA-07..10 + GAL-61-04)', () => {
+  it('odd/even accepted clicks: dep → ret → new dep → ret', () => {
     let pending = emptyPendingRange();
     assert.equal(dateRangePhase(pending), 'pick_departure');
 
@@ -27,6 +28,38 @@ describe('dateRangeSelection (QA-07..10)', () => {
 
     pending = applyDateRangeTap(pending, '2026-12-01', TODAY);
     assert.deepEqual(pending, { departureDate: '2026-12-01', returnDate: '' });
+  });
+
+  it('GAL-61-04 example sequence from Nov 20 2026', () => {
+    const today = '2026-11-20';
+    // Open with empty — opening is not a click
+    let pending = emptyPendingRange();
+    assert.equal(canConfirmPendingDateRange(pending), true);
+
+    pending = applyDateRangeTap(pending, '2026-11-25', today); // odd → dep
+    assert.deepEqual(pending, { departureDate: '2026-11-25', returnDate: '' });
+    assert.equal(canConfirmPendingDateRange(pending), false);
+
+    pending = applyDateRangeTap(pending, '2026-11-29', today); // even → ret
+    assert.deepEqual(pending, { departureDate: '2026-11-25', returnDate: '2026-11-29' });
+    assert.equal(canConfirmPendingDateRange(pending), true);
+
+    pending = applyDateRangeTap(pending, '2026-12-03', today); // odd → new dep
+    assert.deepEqual(pending, { departureDate: '2026-12-03', returnDate: '' });
+    assert.equal(canConfirmPendingDateRange(pending), false);
+
+    pending = applyDateRangeTap(pending, '2026-12-07', today); // even → ret
+    assert.deepEqual(pending, { departureDate: '2026-12-03', returnDate: '2026-12-07' });
+
+    pending = applyDateRangeTap(pending, '2026-12-10', today); // odd → new dep
+    assert.deepEqual(pending, { departureDate: '2026-12-10', returnDate: '' });
+
+    const ignored = applyDateRangeTap(pending, '2026-12-08', today); // invalid < dep
+    assert.deepEqual(ignored, pending);
+
+    pending = applyDateRangeTap(pending, '2026-12-14', today); // even → ret
+    assert.deepEqual(pending, { departureDate: '2026-12-10', returnDate: '2026-12-14' });
+    assert.equal(canConfirmPendingDateRange(pending), true);
   });
 
   it('allows same-day return', () => {
@@ -56,10 +89,16 @@ describe('dateRangeSelection (QA-07..10)', () => {
     assert.equal(isDateInSelectedRange('2026-11-23', pending), false);
   });
 
-  it('reset empties pending; reconcile clears invalid return', () => {
+  it('reconcile clears invalid return; confirm rules for incomplete', () => {
     assert.deepEqual(emptyPendingRange(), { departureDate: '', returnDate: '' });
     assert.equal(reconcileReturnWithDeparture('2026-11-25', '2026-11-20'), '');
     assert.equal(reconcileReturnWithDeparture('2026-11-20', '2026-11-20'), '2026-11-20');
+    assert.equal(canConfirmPendingDateRange({ departureDate: '', returnDate: '' }), true);
+    assert.equal(canConfirmPendingDateRange({ departureDate: '2026-11-20', returnDate: '' }), false);
+    assert.equal(
+      canConfirmPendingDateRange({ departureDate: '2026-11-20', returnDate: '2026-11-22' }),
+      true,
+    );
   });
 
   it('validation blocks past departure and inverted range', () => {

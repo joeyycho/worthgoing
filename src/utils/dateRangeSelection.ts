@@ -22,8 +22,11 @@ export function dateRangePhase(pending: PendingDateRange): DateRangeTapPhase {
 }
 
 /**
- * First tap → departure; second tap → return (≥ departure).
- * After a complete range, the next tap starts a new departure (clears return).
+ * Odd accepted clicks → departure (clear return).
+ * Even accepted clicks → return (≥ departure).
+ * Invalid clicks (past, return < dep) do not advance the sequence.
+ * Opening the picker is not a click; a complete pending range means the next
+ * accepted click starts a new departure.
  */
 export function applyDateRangeTap(
   pending: PendingDateRange,
@@ -40,12 +43,18 @@ export function applyDateRangeTap(
     return { departureDate: day, returnDate: '' };
   }
 
-  // pick_return
+  // pick_return — invalid pre-departure does not advance sequence
   if (compareLocalISODate(day, pending.departureDate) < 0) {
     return pending;
   }
 
   return { departureDate: pending.departureDate, returnDate: day };
+}
+
+/** Confirm only when empty (no dates) or both ends set — never mid-replacement. */
+export function canConfirmPendingDateRange(pending: PendingDateRange): boolean {
+  const phase = dateRangePhase(pending);
+  return phase === 'pick_departure' || phase === 'complete';
 }
 
 export function isDateRangeDayDisabled(

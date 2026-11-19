@@ -573,7 +573,7 @@
 
 .date-range-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr 1.2fr;
+  grid-template-columns: 1fr 1.2fr;
   gap: 8px;
   margin-top: 16px;
 }
@@ -597,6 +597,11 @@
   border: 0;
   background: var(--accent);
   color: #ffffff;
+}
+
+.date-range-confirm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .field-error {

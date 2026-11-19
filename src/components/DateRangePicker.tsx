@@ -1,8 +1,8 @@
 import { useId, useState } from 'react';
 import {
   applyDateRangeTap,
+  canConfirmPendingDateRange,
   dateRangePhase,
-  emptyPendingRange,
   isDateInSelectedRange,
   isDateRangeDayDisabled,
   isDateRangeEndpoint,
@@ -44,6 +44,7 @@ export function DateRangePicker({
   );
 
   const phase = dateRangePhase(pending);
+  const canConfirm = canConfirmPendingDateRange(pending);
   const grid = buildMonthGrid(monthCursor);
 
   const summary =
@@ -64,6 +65,7 @@ export function DateRangePicker({
     if (disabled) {
       return;
     }
+    // Opening is not a click — seed pending from confirmed only.
     setPending({ departureDate, returnDate });
     setMonthCursor(startOfLocalMonth(departureDate || today));
     setOpen(true);
@@ -74,11 +76,10 @@ export function DateRangePicker({
     setOpen(false);
   }
 
-  function handleReset() {
-    setPending(emptyPendingRange());
-  }
-
   function handleConfirm() {
+    if (!canConfirmPendingDateRange(pending)) {
+      return;
+    }
     onConfirm({
       departureDate: pending.departureDate,
       returnDate: pending.returnDate,
@@ -128,7 +129,7 @@ export function DateRangePicker({
                   ? '출발일을 선택하세요'
                   : phase === 'pick_return'
                     ? '귀국일을 선택하세요'
-                    : '일정을 확인한 뒤 확인해 주세요'}
+                    : '이 일정이 맞나요?'}
               </p>
             </header>
 
@@ -199,13 +200,15 @@ export function DateRangePicker({
             </div>
 
             <div className="date-range-actions">
-              <button type="button" className="date-range-secondary" onClick={handleReset}>
-                리셋
-              </button>
               <button type="button" className="date-range-secondary" onClick={handleCancel}>
                 취소
               </button>
-              <button type="button" className="date-range-confirm" onClick={handleConfirm}>
+              <button
+                type="button"
+                className="date-range-confirm"
+                onClick={handleConfirm}
+                disabled={!canConfirm}
+              >
                 확인
               </button>
             </div>

@@ -116,7 +116,7 @@ export function TravelSearchScreen({ initialForm, onSearch }: TravelSearchScreen
           ? '출발일은 오늘 이후로 선택해 주세요.'
           : '귀국일은 출발일 당일 또는 이후여야 해요.';
     } else if (scheduleMode === 'fixed' && (form.departureDate === '') !== (form.returnDate === '')) {
-      nextErrors.dateRange = '출발일과 귀국일을 모두 선택하거나 리셋 후 확인해 주세요.';
+      nextErrors.dateRange = '출발일과 귀국일을 모두 선택해 주세요.';
     }
 
     setErrors(nextErrors);
@@ -286,9 +286,6 @@ export function TravelSearchScreen({ initialForm, onSearch }: TravelSearchScreen
             +
           </button>
         </div>
-        <p id="trip-length-help" className="helper-text">
-          {TRIP_LENGTH_MIN}–{TRIP_LENGTH_MAX}일
-        </p>
         {errors.tripLengthDays ? (
           <p id="trip-length-error" className="field-error" role="alert">
             {errors.tripLengthDays}
@@ -326,14 +323,11 @@ export function TravelSearchScreen({ initialForm, onSearch }: TravelSearchScreen
             returnDate={form.returnDate}
             onConfirm={handleDateConfirm}
           />
-        ) : (
-          <p className="helper-text">날짜 선택 없이 유연 일정으로 찾아 드려요.</p>
-        )}
+        ) : null}
 
         {scheduleMode === 'flexible' || isFlexibleDates ? (
           <p className="status-note flexible-note" role="status">
-            날짜를 비워 두면 <strong>유연 일정(참고용)</strong> 모드로 찾아 드려요. 실제 항공권 날짜는
-            별도 확인이 필요해요.
+            날짜를 비워 두면 유연 일정으로 찾아 드려요. 실제 항공권 날짜는 별도 확인이 필요해요.
           </p>
         ) : (
           <p className="helper-text">선택한 기간을 기준으로 항공·숙박 가격을 찾아 볼게요.</p>
