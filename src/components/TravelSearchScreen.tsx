@@ -16,17 +16,31 @@ import {
   SEARCH_FORM_CTA_HELPER,
   SEARCH_FORM_CTA_LABEL,
 } from '../utils/priceProvenance';
+import {
+  isValidConfirmedDateRange,
+  reconcileReturnWithDeparture,
+} from '../utils/dateRangeSelection';
+import { todayLocalISO } from '../utils/localDate';
+import { DateRangePicker } from './DateRangePicker';
 
 type FieldErrorKey = 'tripLengthDays' | 'departureAirports' | 'dateRange';
+type ScheduleMode = 'fixed' | 'flexible';
 
 interface TravelSearchScreenProps {
   initialForm?: TravelSearchFormState;
   onSearch: (form: TravelSearchFormState) => void;
 }
 
+function inferScheduleMode(form: TravelSearchFormState): ScheduleMode {
+  return form.departureDate === '' && form.returnDate === '' ? 'flexible' : 'fixed';
+}
+
 export function TravelSearchScreen({ initialForm, onSearch }: TravelSearchScreenProps) {
-  const [form, setForm] = useState<TravelSearchFormState>(initialForm ?? INITIAL_TRAVEL_SEARCH);
+  const seed = initialForm ?? INITIAL_TRAVEL_SEARCH;
+  const [form, setForm] = useState<TravelSearchFormState>(seed);
+  const [scheduleMode, setScheduleMode] = useState<ScheduleMode>(() => inferScheduleMode(seed));
   const [errors, setErrors] = useState<Partial<Record<FieldErrorKey, string>>>({});
+  const [today] = useState(() => todayLocalISO());
 
   const totalBudget = form.budgetPerPerson * form.travelers;
   const isFlexibleDates = form.departureDate === '' && form.returnDate === '';
@@ -49,11 +63,42 @@ export function TravelSearchScreen({ initialForm, onSearch }: TravelSearchScreen
     });
   }
 
+  function setMode(next: ScheduleMode) {
+    setScheduleMode(next);
+    setErrors((prev) => {
+      if (!prev.dateRange) {
+        return prev;
+      }
+      const { dateRange: _removed, ...rest } = prev;
+      return rest;
+    });
+    if (next === 'flexible') {
+      setForm((prev) => ({ ...prev, departureDate: '', returnDate: '' }));
+    }
+  }
+
+  function handleDateConfirm(next: { departureDate: string; returnDate: string }) {
+    const returnDate = reconcileReturnWithDeparture(next.departureDate, next.returnDate);
+    setForm((prev) => ({
+      ...prev,
+      departureDate: next.departureDate,
+      returnDate,
+    }));
+    setErrors((prev) => {
+      if (!prev.dateRange) {
+        return prev;
+      }
+      const { dateRange: _removed, ...rest } = prev;
+      return rest;
+    });
+  }
+
   function validate(): boolean {
     const nextErrors: Partial<Record<FieldErrorKey, string>> = {};
 
     if (
       !Number.isFinite(form.tripLengthDays) ||
+      !Number.isInteger(form.tripLengthDays) ||
       form.tripLengthDays < TRIP_LENGTH_MIN ||
       form.tripLengthDays > TRIP_LENGTH_MAX
     ) {
@@ -64,8 +109,14 @@ export function TravelSearchScreen({ initialForm, onSearch }: TravelSearchScreen
       nextErrors.departureAirports = '출발 공항을 하나 이상 선택해 주세요.';
     }
 
-    if (form.departureDate && form.returnDate && form.returnDate < form.departureDate) {
-      nextErrors.dateRange = '귀국일은 출발일 이후여야 해요.';
+    const rangeCheck = isValidConfirmedDateRange(form.departureDate, form.returnDate, today);
+    if (!rangeCheck.ok) {
+      nextErrors.dateRange =
+        rangeCheck.reason === 'past_departure'
+          ? '출발일은 오늘 이후로 선택해 주세요.'
+          : '귀국일은 출발일 당일 또는 이후여야 해요.';
+    } else if (scheduleMode === 'fixed' && (form.departureDate === '') !== (form.returnDate === '')) {
+      nextErrors.dateRange = '출발일과 귀국일을 모두 선택해 주세요.';
     }
 
     setErrors(nextErrors);
@@ -77,15 +128,21 @@ export function TravelSearchScreen({ initialForm, onSearch }: TravelSearchScreen
     if (!validate()) {
       return;
     }
-    onSearch(form);
+
+    const payload: TravelSearchFormState =
+      scheduleMode === 'flexible'
+        ? { ...form, departureDate: '', returnDate: '' }
+        : form;
+
+    onSearch(payload);
   }
 
   return (
     <form className="travel-search" onSubmit={handleSubmit} noValidate>
       <header className="travel-search-header">
-        <p className="brand-eyebrow">갈만해</p>
-        <h1 className="page-title">얼마면 갈만해?</h1>
-        <p className="page-subtitle">예산과 일정만 알려주시면, 갈 만한 여행지를 찾아 드릴게요.</p>
+        <p className="brand-eyebrow">여행가지</p>
+        <h1 className="page-title">얼마면 여행가지?</h1>
+        <p className="page-subtitle">예산과 일정만 알려주시면, 여행지를 찾아 드릴게요.</p>
       </header>
 
       <section className="form-section" aria-labelledby="budget-heading">
@@ -202,27 +259,33 @@ export function TravelSearchScreen({ initialForm, onSearch }: TravelSearchScreen
         <h2 id="length-heading" className="section-title">
           여행 기간 <span className="required-mark">필수</span>
         </h2>
-        <div className="inline-field">
-          <label className="sr-only" htmlFor="trip-length">
-            여행 기간 (일)
-          </label>
-          <input
-            id="trip-length"
-            className="number-input"
-            type="number"
-            inputMode="numeric"
-            min={TRIP_LENGTH_MIN}
-            max={TRIP_LENGTH_MAX}
-            value={form.tripLengthDays}
-            onChange={(event) => update('tripLengthDays', Number(event.target.value))}
-            aria-invalid={Boolean(errors.tripLengthDays)}
-            aria-describedby={errors.tripLengthDays ? 'trip-length-error' : 'trip-length-help'}
-          />
-          <span className="inline-suffix">일</span>
+        <div className="stepper" role="group" aria-label="여행 기간">
+          <button
+            type="button"
+            className="stepper-button"
+            aria-label="기간 줄이기"
+            disabled={form.tripLengthDays <= TRIP_LENGTH_MIN}
+            onClick={() =>
+              update('tripLengthDays', Math.max(TRIP_LENGTH_MIN, form.tripLengthDays - 1))
+            }
+          >
+            −
+          </button>
+          <p className="stepper-value" aria-live="polite">
+            {form.tripLengthDays}일
+          </p>
+          <button
+            type="button"
+            className="stepper-button"
+            aria-label="기간 늘리기"
+            disabled={form.tripLengthDays >= TRIP_LENGTH_MAX}
+            onClick={() =>
+              update('tripLengthDays', Math.min(TRIP_LENGTH_MAX, form.tripLengthDays + 1))
+            }
+          >
+            +
+          </button>
         </div>
-        <p id="trip-length-help" className="helper-text">
-          {TRIP_LENGTH_MIN}–{TRIP_LENGTH_MAX}일
-        </p>
         {errors.tripLengthDays ? (
           <p id="trip-length-error" className="field-error" role="alert">
             {errors.tripLengthDays}
@@ -234,28 +297,37 @@ export function TravelSearchScreen({ initialForm, onSearch }: TravelSearchScreen
         <h2 id="dates-heading" className="section-title">
           출발 / 귀국일 <span className="optional-mark">선택</span>
         </h2>
-        <div className="date-grid">
-          <label className="date-field">
-            <span className="date-label">출발일</span>
-            <input
-              type="date"
-              value={form.departureDate}
-              onChange={(event) => update('departureDate', event.target.value)}
-            />
-          </label>
-          <label className="date-field">
-            <span className="date-label">귀국일</span>
-            <input
-              type="date"
-              value={form.returnDate}
-              onChange={(event) => update('returnDate', event.target.value)}
-            />
-          </label>
+
+        <div className="schedule-mode-grid" role="group" aria-label="일정 유무">
+          <button
+            type="button"
+            className={`chip schedule-mode-chip${scheduleMode === 'fixed' ? ' is-selected' : ''}`}
+            aria-pressed={scheduleMode === 'fixed'}
+            onClick={() => setMode('fixed')}
+          >
+            일정이 있어요
+          </button>
+          <button
+            type="button"
+            className={`chip schedule-mode-chip${scheduleMode === 'flexible' ? ' is-selected' : ''}`}
+            aria-pressed={scheduleMode === 'flexible'}
+            onClick={() => setMode('flexible')}
+          >
+            일정이 없어요
+          </button>
         </div>
-        {isFlexibleDates ? (
+
+        {scheduleMode === 'fixed' ? (
+          <DateRangePicker
+            departureDate={form.departureDate}
+            returnDate={form.returnDate}
+            onConfirm={handleDateConfirm}
+          />
+        ) : null}
+
+        {scheduleMode === 'flexible' || isFlexibleDates ? (
           <p className="status-note flexible-note" role="status">
-            날짜를 비워 두면 <strong>유연 일정(참고용)</strong> 모드로 찾아 드려요. 실제 항공권 날짜는
-            별도 확인이 필요해요.
+            날짜를 비워 두면 유연 일정으로 찾아 드려요. 실제 항공권 날짜는 별도 확인이 필요해요.
           </p>
         ) : (
           <p className="helper-text">선택한 기간을 기준으로 항공·숙박 가격을 찾아 볼게요.</p>
