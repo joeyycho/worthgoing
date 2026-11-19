@@ -6,7 +6,7 @@ import {
   resolveActiveAccommodationProvider,
 } from './accommodations/service.js';
 import { describeDuffelClient } from './duffel/client.js';
-import { loadServerEnv } from './env.js';
+import { loadServerEnv, toCorsOriginOption } from './env.js';
 import { FlightSearchService, resolveActiveFlightProvider } from './flights/service.js';
 import { FixedWindowRateLimiter } from './flights/rateLimit.js';
 import { registerAccommodationRoutes } from './routes/accommodations.js';
@@ -23,12 +23,7 @@ const app = express();
 
 app.use(
   cors({
-    origin:
-      env.corsOrigins === '*'
-        ? true
-        : env.corsOrigins.length === 1
-          ? env.corsOrigins[0]
-          : env.corsOrigins,
+    origin: toCorsOriginOption(env.corsOrigins),
   }),
 );
 app.use(express.json({ limit: '1mb' }));
