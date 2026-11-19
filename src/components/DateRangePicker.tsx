@@ -128,7 +128,7 @@ export function DateRangePicker({
                   ? '출발일을 선택하세요'
                   : phase === 'pick_return'
                     ? '귀국일을 선택하세요'
-                    : '일정을 확인한 뒤 적용하세요'}
+                    : '일정을 확인한 뒤 확인해 주세요'}
               </p>
             </header>
 
