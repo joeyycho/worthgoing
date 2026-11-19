@@ -1,9 +1,31 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 function required(name: string, value: string | undefined): string {
   if (!value) {
     throw new Error(`Missing required env var: ${name}`);
   }
   return value;
 }
+
+/**
+ * Local/dev: load `server/.env` when present (Node 24 `process.loadEnvFile`).
+ * - Skipped when `NODE_ENV === 'production'` so deploy process-env injection stays authoritative.
+ * - Existing `process.env` values always win over file values (Node semantics).
+ * - No-op when the file is missing (CI / bare start still works).
+ */
+function loadLocalEnvFileIfPresent(): void {
+  if (process.env.NODE_ENV === 'production') return;
+  const envFilePath = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '../.env',
+  );
+  if (!existsSync(envFilePath)) return;
+  process.loadEnvFile(envFilePath);
+}
+
+loadLocalEnvFileIfPresent();
 
 export function loadServerEnv() {
   const supabaseUrl = process.env.SUPABASE_URL;

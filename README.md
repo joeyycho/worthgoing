@@ -23,7 +23,7 @@ npm run dev
 
 브라우저에서 개발 서버를 확인합니다. 오른쪽 아래 `AIT` 버튼으로 Apps in Toss 환경을 미리볼 수 있습니다 (SDK 3.x Devtools — 별도 샌드박스 앱 없음).
 
-Supabase를 쓰려면 `server/.env`에 `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`를 넣고, 마이그레이션을 적용하세요. 자세한 방법은 `supabase/README.md`.
+Supabase를 쓰려면 `server/.env.example`을 `server/.env`로 복사한 뒤 Dev 프로젝트의 `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`만 넣으세요. 로컬에서 `npm run server:dev` / `server` `start`는 `server/.env`가 있으면 자동 로드합니다(`NODE_ENV=production`이면 생략; 이미 주입된 process env가 우선). 마이그레이션은 Dev에만 적용하세요. 자세한 방법은 `supabase/README.md`.
 
 SerpApi (기본 live 경로): `server/.env`에 `SERPAPI_API_KEY`를 넣으면 항공·숙소 검색이 **SerpApi Google Flights / Hotels**를 사용합니다. 키가 없거나 API 실패 시 Mock으로 폴백합니다. Vite/`VITE_*`에 비밀키를 넣지 마세요. `/health`의 `serpapiConfigured`와 `activeFlightProvider` / `activeAccommodationProvider`는 서로 다른 신호입니다 (active는 `serpapi` | `mock`만).
 
