@@ -10,13 +10,16 @@ function required(name: string, value: string | undefined): string {
 }
 
 /**
- * Local/dev: load `server/.env` when present (Node 24 `process.loadEnvFile`).
- * - Skipped when `NODE_ENV === 'production'` so deploy process-env injection stays authoritative.
+ * Local/dev: load `server/.env` only when `NODE_ENV === 'development'`
+ * and the file is present (Node 24 `process.loadEnvFile`).
+ * - Never loads when `NODE_ENV === 'production'` (host-injected process env only).
+ * - Never loads when `NODE_ENV` is unset or any other value — set
+ *   `NODE_ENV=development` locally (e.g. `npm run dev` in server/).
  * - Existing `process.env` values always win over file values (Node semantics).
- * - No-op when the file is missing (CI / bare start still works).
+ * - No-op when the file is missing.
  */
 function loadLocalEnvFileIfPresent(): void {
-  if (process.env.NODE_ENV === 'production') return;
+  if (process.env.NODE_ENV !== 'development') return;
   const envFilePath = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
     '../.env',
