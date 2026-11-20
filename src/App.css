@@ -382,8 +382,11 @@
 .travel-search .schedule-mode-grid > .chip.schedule-mode-chip.is-selected,
 .travel-search .schedule-mode-grid > .chip.schedule-mode-chip:active,
 .travel-search .schedule-mode-grid > .chip.schedule-mode-chip:focus,
-.travel-search .schedule-mode-grid > .chip.schedule-mode-chip:hover {
-  color: #000000;
+.travel-search .schedule-mode-grid > .chip.schedule-mode-chip:hover,
+.travel-search .schedule-mode-grid > .chip.schedule-mode-chip[aria-pressed='true'],
+.travel-search .schedule-mode-grid > .chip.schedule-mode-chip[aria-pressed='false'] {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000;
 }
 
 .date-range-picker {
@@ -433,9 +436,12 @@
 }
 
 .date-range-overlay {
+  /* Keep travel-search accent when portaled outside .travel-search */
+  --accent: #b166d3;
+  --accent-soft: #f6eafb;
   /* Clear in-app tab bar + Toss/device safe area so 취소/확인 stay tappable */
   --date-range-clearance: calc(
-    var(--tab-height) + max(16px, var(--safe-bottom), env(safe-area-inset-bottom, 0px))
+    var(--tab-height, 64px) + max(16px, var(--safe-bottom, 0px), env(safe-area-inset-bottom, 0px))
   );
   position: fixed;
   inset: 0;

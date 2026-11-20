@@ -140,21 +140,25 @@ describe('Travel search UI refinement GAL-62-01..04', () => {
   it('GAL-62-02 schedule-mode chip text forced to #000000 selected and unselected', () => {
     assert.match(
       css,
-      /\.travel-search\s+\.schedule-mode-grid\s*>\s*\.chip\.schedule-mode-chip[\s\S]*color:\s*#000000/,
+      /\.travel-search\s+\.schedule-mode-grid\s*>\s*\.chip\.schedule-mode-chip[\s\S]*color:\s*#000000\s*!important/,
     );
     assert.match(
       css,
-      /\.travel-search\s+\.schedule-mode-grid\s*>\s*\.chip\.schedule-mode-chip\.is-selected[\s\S]*color:\s*#000000/,
+      /\.travel-search\s+\.schedule-mode-grid\s*>\s*\.chip\.schedule-mode-chip\.is-selected[\s\S]*color:\s*#000000\s*!important/,
     );
+    assert.match(css, /-webkit-text-fill-color:\s*#000000/);
   });
 
   it('GAL-62-03 calendar sheet clears bottom nav via safe-area + sticky actions', () => {
     assert.match(css, /--date-range-clearance/);
     assert.match(css, /env\(safe-area-inset-bottom/);
-    assert.match(css, /var\(--safe-bottom\)/);
-    assert.match(css, /var\(--tab-height\)/);
+    assert.match(css, /var\(--safe-bottom/);
+    assert.match(css, /var\(--tab-height/);
+    assert.match(css, /\.date-range-overlay\s*\{[^}]*--accent:\s*#b166d3/i);
     assert.match(css, /\.date-range-sheet-body[\s\S]*overflow-y:\s*auto/);
     assert.match(css, /\.date-range-actions[\s\S]*flex:\s*0 0 auto/);
+    assert.match(picker, /createPortal/);
+    assert.match(picker, /\.app-shell/);
     assert.match(picker, /date-range-sheet-body/);
     assert.match(picker, /date-range-actions/);
     assert.match(picker, /취소/);
