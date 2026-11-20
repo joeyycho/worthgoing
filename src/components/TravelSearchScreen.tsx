@@ -43,7 +43,6 @@ export function TravelSearchScreen({ initialForm, onSearch }: TravelSearchScreen
   const [today] = useState(() => todayLocalISO());
 
   const totalBudget = form.budgetPerPerson * form.travelers;
-  const isFlexibleDates = form.departureDate === '' && form.returnDate === '';
 
   const budgetPercent = useMemo(() => {
     return ((form.budgetPerPerson - BUDGET_MIN) / (BUDGET_MAX - BUDGET_MIN)) * 100;
@@ -325,7 +324,7 @@ export function TravelSearchScreen({ initialForm, onSearch }: TravelSearchScreen
           />
         ) : null}
 
-        {scheduleMode === 'flexible' || isFlexibleDates ? (
+        {scheduleMode === 'flexible' ? (
           <p className="status-note flexible-note" role="status">
             날짜를 비워 두면 유연 일정으로 찾아 드려요. 실제 항공권 날짜는 별도 확인이 필요해요.
           </p>

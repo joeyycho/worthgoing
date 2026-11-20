@@ -25,7 +25,7 @@ function readSrc(relativePath: string): string {
 
 describe('GAL-32 search CTA / provenance (cases 1–9)', () => {
   it('1. pre-search CTA has no MOCK claim', () => {
-    assert.equal(SEARCH_FORM_CTA_LABEL, '여행지 추천받기');
+    assert.equal(SEARCH_FORM_CTA_LABEL, '여행지 검색하기');
     assert.equal(findBannedPreSearchPhrase(SEARCH_FORM_CTA_LABEL, SEARCH_FORM_CTA_HELPER), null);
     assert.ok(!SEARCH_FORM_CTA_LABEL.includes('MOCK'));
     assert.ok(!SEARCH_FORM_CTA_HELPER.includes('MOCK'));

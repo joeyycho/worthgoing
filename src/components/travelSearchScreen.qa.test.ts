@@ -117,3 +117,55 @@ describe('Travel conditions UX follow-up GAL-61-01..04', () => {
     assert.match(picker, /if \(!canConfirmPendingDateRange\(pending\)\)/);
   });
 });
+
+describe('Travel search UI refinement GAL-62-01..04', () => {
+  const screen = readSrc('src/components/TravelSearchScreen.tsx');
+  const picker = readSrc('src/components/DateRangePicker.tsx');
+  const css = readSrc('src/App.css');
+  const provenance = readSrc('src/utils/priceProvenance.ts');
+
+  it('GAL-62-01 yellow flexible notice only when scheduleMode is flexible', () => {
+    assert.match(
+      screen,
+      /\{scheduleMode === 'flexible' \? \([\s\S]*flexible-note[\s\S]*날짜를 비워 두면 유연 일정으로 찾아 드려요\. 실제 항공권 날짜는 별도 확인이 필요해요\.[\s\S]*\) : \(/,
+    );
+    assert.ok(!screen.includes("scheduleMode === 'flexible' || isFlexibleDates"));
+    assert.ok(!screen.includes('isFlexibleDates'));
+    assert.match(
+      screen,
+      /날짜를 비워 두면 유연 일정으로 찾아 드려요\. 실제 항공권 날짜는 별도 확인이 필요해요\./,
+    );
+  });
+
+  it('GAL-62-02 schedule-mode chip text forced to #000000 selected and unselected', () => {
+    assert.match(
+      css,
+      /\.travel-search\s+\.schedule-mode-grid\s*>\s*\.chip\.schedule-mode-chip[\s\S]*color:\s*#000000/,
+    );
+    assert.match(
+      css,
+      /\.travel-search\s+\.schedule-mode-grid\s*>\s*\.chip\.schedule-mode-chip\.is-selected[\s\S]*color:\s*#000000/,
+    );
+  });
+
+  it('GAL-62-03 calendar sheet clears bottom nav via safe-area + sticky actions', () => {
+    assert.match(css, /--date-range-clearance/);
+    assert.match(css, /env\(safe-area-inset-bottom/);
+    assert.match(css, /var\(--safe-bottom\)/);
+    assert.match(css, /var\(--tab-height\)/);
+    assert.match(css, /\.date-range-sheet-body[\s\S]*overflow-y:\s*auto/);
+    assert.match(css, /\.date-range-actions[\s\S]*flex:\s*0 0 auto/);
+    assert.match(picker, /date-range-sheet-body/);
+    assert.match(picker, /date-range-actions/);
+    assert.match(picker, /취소/);
+    assert.match(picker, /확인/);
+    assert.match(picker, /applyDateRangeTap/);
+    assert.match(picker, /canConfirmPendingDateRange/);
+  });
+
+  it('GAL-62-04 primary CTA copy is 여행지 검색하기', () => {
+    assert.match(provenance, /SEARCH_FORM_CTA_LABEL\s*=\s*'여행지 검색하기'/);
+    assert.ok(!provenance.includes("'여행지 추천받기'"));
+    assert.match(screen, /SEARCH_FORM_CTA_LABEL/);
+  });
+});

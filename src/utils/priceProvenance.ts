@@ -36,7 +36,7 @@ export const SEARCH_RESULT_PROVENANCE_LABEL: Record<PriceProvenanceKind, string>
 export const SEARCH_RESULTS_PARTIAL_MOCK_BANNER = '일부 가격은 예시 데이터입니다.';
 
 /** Pre-search CTA — must not claim LIVE or MOCK. */
-export const SEARCH_FORM_CTA_LABEL = '여행지 추천받기';
+export const SEARCH_FORM_CTA_LABEL = '여행지 검색하기';
 
 export const SEARCH_FORM_CTA_HELPER =
   '예산과 일정에 맞는 여행지를 찾아 드려요.';
