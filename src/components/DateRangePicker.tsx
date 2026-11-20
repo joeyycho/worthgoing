@@ -1,4 +1,5 @@
 import { useId, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   applyDateRangeTap,
   canConfirmPendingDateRange,
@@ -108,113 +109,118 @@ export function DateRangePicker({
         <span className="date-range-trigger-value">{summary}</span>
       </button>
 
-      {open ? (
-        <div className="date-range-overlay" role="presentation" onClick={handleCancel}>
-          <div
-            className="date-range-sheet"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={titleId}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <header className="date-range-sheet-header">
-              <h3 id={titleId} className="date-range-sheet-title">
-                여행 일정
-              </h3>
-              <p className="date-range-sheet-pending" aria-live="polite">
-                {pendingSummary}
-              </p>
-              <p className="date-range-sheet-hint">
-                {phase === 'pick_departure'
-                  ? '출발일을 선택하세요'
-                  : phase === 'pick_return'
-                    ? '귀국일을 선택하세요'
-                    : '이 일정이 맞나요?'}
-              </p>
-            </header>
-
-            <div className="date-range-month-nav">
-              <button
-                type="button"
-                className="date-range-nav-button"
-                aria-label="이전 달"
-                onClick={() => setMonthCursor((prev) => addLocalMonths(prev, -1))}
+      {open
+        ? createPortal(
+            <div className="date-range-overlay" role="presentation" onClick={handleCancel}>
+              <div
+                className="date-range-sheet"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={titleId}
+                onClick={(event) => event.stopPropagation()}
               >
-                ‹
-              </button>
-              <p className="date-range-month-label">{monthLabel(monthCursor)}</p>
-              <button
-                type="button"
-                className="date-range-nav-button"
-                aria-label="다음 달"
-                onClick={() => setMonthCursor((prev) => addLocalMonths(prev, 1))}
-              >
-                ›
-              </button>
-            </div>
+                <div className="date-range-sheet-body">
+                  <header className="date-range-sheet-header">
+                    <h3 id={titleId} className="date-range-sheet-title">
+                      여행 일정
+                    </h3>
+                    <p className="date-range-sheet-pending" aria-live="polite">
+                      {pendingSummary}
+                    </p>
+                    <p className="date-range-sheet-hint">
+                      {phase === 'pick_departure'
+                        ? '출발일을 선택하세요'
+                        : phase === 'pick_return'
+                          ? '귀국일을 선택하세요'
+                          : '이 일정이 맞나요?'}
+                    </p>
+                  </header>
 
-            <div className="date-range-weekdays" aria-hidden="true">
-              {WEEKDAYS.map((label) => (
-                <span key={label}>{label}</span>
-              ))}
-            </div>
+                  <div className="date-range-month-nav">
+                    <button
+                      type="button"
+                      className="date-range-nav-button"
+                      aria-label="이전 달"
+                      onClick={() => setMonthCursor((prev) => addLocalMonths(prev, -1))}
+                    >
+                      ‹
+                    </button>
+                    <p className="date-range-month-label">{monthLabel(monthCursor)}</p>
+                    <button
+                      type="button"
+                      className="date-range-nav-button"
+                      aria-label="다음 달"
+                      onClick={() => setMonthCursor((prev) => addLocalMonths(prev, 1))}
+                    >
+                      ›
+                    </button>
+                  </div>
 
-            <div className="date-range-grid" role="grid" aria-label="날짜 선택">
-              {grid.map((day, index) => {
-                if (!day) {
-                  return <span key={`empty-${index}`} className="date-range-cell is-empty" />;
-                }
+                  <div className="date-range-weekdays" aria-hidden="true">
+                    {WEEKDAYS.map((label) => (
+                      <span key={label}>{label}</span>
+                    ))}
+                  </div>
 
-                const disabledDay = isDateRangeDayDisabled(day, pending, today);
-                const inRange = isDateInSelectedRange(day, pending);
-                const isDeparture = day === pending.departureDate;
-                const isReturn = day === pending.returnDate;
-                const isEndpoint = isDateRangeEndpoint(day, pending);
-                const isToday = day === today;
+                  <div className="date-range-grid" role="grid" aria-label="날짜 선택">
+                    {grid.map((day, index) => {
+                      if (!day) {
+                        return <span key={`empty-${index}`} className="date-range-cell is-empty" />;
+                      }
 
-                return (
-                  <button
-                    key={day}
-                    type="button"
-                    role="gridcell"
-                    className={[
-                      'date-range-cell',
-                      disabledDay ? 'is-disabled' : '',
-                      inRange ? 'is-in-range' : '',
-                      isEndpoint ? 'is-endpoint' : '',
-                      isDeparture ? 'is-departure' : '',
-                      isReturn ? 'is-return' : '',
-                      isToday ? 'is-today' : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                    disabled={disabledDay}
-                    aria-label={day}
-                    aria-pressed={isEndpoint}
-                    onClick={() => handleDayClick(day)}
-                  >
-                    {Number(day.slice(-2))}
+                      const disabledDay = isDateRangeDayDisabled(day, pending, today);
+                      const inRange = isDateInSelectedRange(day, pending);
+                      const isDeparture = day === pending.departureDate;
+                      const isReturn = day === pending.returnDate;
+                      const isEndpoint = isDateRangeEndpoint(day, pending);
+                      const isToday = day === today;
+
+                      return (
+                        <button
+                          key={day}
+                          type="button"
+                          role="gridcell"
+                          className={[
+                            'date-range-cell',
+                            disabledDay ? 'is-disabled' : '',
+                            inRange ? 'is-in-range' : '',
+                            isEndpoint ? 'is-endpoint' : '',
+                            isDeparture ? 'is-departure' : '',
+                            isReturn ? 'is-return' : '',
+                            isToday ? 'is-today' : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
+                          disabled={disabledDay}
+                          aria-label={day}
+                          aria-pressed={isEndpoint}
+                          onClick={() => handleDayClick(day)}
+                        >
+                          {Number(day.slice(-2))}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="date-range-actions">
+                  <button type="button" className="date-range-secondary" onClick={handleCancel}>
+                    취소
                   </button>
-                );
-              })}
-            </div>
-
-            <div className="date-range-actions">
-              <button type="button" className="date-range-secondary" onClick={handleCancel}>
-                취소
-              </button>
-              <button
-                type="button"
-                className="date-range-confirm"
-                onClick={handleConfirm}
-                disabled={!canConfirm}
-              >
-                확인
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+                  <button
+                    type="button"
+                    className="date-range-confirm"
+                    onClick={handleConfirm}
+                    disabled={!canConfirm}
+                  >
+                    확인
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.querySelector('.app-shell') ?? document.body,
+          )
+        : null}
     </div>
   );
 }
